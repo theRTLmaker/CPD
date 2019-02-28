@@ -20,7 +20,6 @@ typedef struct _particle_t{
 
 
 
-void init_particles(long seed, long ncside, long long n_part, particle_t *par);
 
 vector2 addVectors(vector2 a, vector2 b);
 vector2 subVectors(vector2 a, vector2 b);
@@ -30,6 +29,8 @@ particle_t calculateCenterOfMass(particle_t *par, long long n_part);
 
 vector2 calculateGravForce(particle_t p1, particle_t massCenter);
 
-void printParticle(particle_t p);
+void printParticle(particle_t *p, long long int nr_part);
+
+void printAllParticles(particle_t *p, long long int nr_part);
 
 #endif

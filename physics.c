@@ -1,5 +1,6 @@
 #include "physics.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 
 
@@ -52,19 +53,25 @@ vector2 calculateGravForce(particle_t p1, particle_t massCenter){
 	return multiplyVectorByConst(gravForceMag / distance, forceDirection);
 }
 
-
-void printVector(vector2 v);
-
-void printParticle(particle_t p){
-	printf("p: ");
-	printVector(p.position);
-	printf("v: ");
-	printVector(p.velocity);	
-	printf("m: %f\n", p.m);
+void printVectorPosition(vector2 p){
+	printf("Position - ( %lf , %lf )\n", p.x, p.y);
 }
 
+void printVectorVelocity(vector2 v) {
+	printf("Velocity - ( %lf , %lf )\n",v.x, v.y);
+}
 
+void printParticle(particle_t *p, long long int nr_part) {
+	printf("particle-%lld\n", nr_part);
+	printVectorPosition(p[nr_part].position);
+	printVectorVelocity(p[nr_part].velocity);
+}
 
-void printVector(vector2 v){
-	printf("(%f, %f)\n", v.x, v.y);
+void printAllParticles(particle_t *p, long long int nr_part) {
+	long long int i = 0;
+	while(i < nr_part) 
+	{
+		printParticle(p, i);
+		i++;
+	}
 }
