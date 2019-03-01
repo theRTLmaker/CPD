@@ -54,17 +54,22 @@ vector2 calculateGravForce(particle_t p1, particle_t massCenter){
 }
 
 void printVectorPosition(vector2 p){
-	printf("Position - ( %lf , %lf )\n", p.x, p.y);
+	printf("	Position - ( %lf , %lf )\n", p.x, p.y);
 }
 
 void printVectorVelocity(vector2 v) {
-	printf("Velocity - ( %lf , %lf )\n",v.x, v.y);
+	printf("	Velocity - ( %lf , %lf )\n",v.x, v.y);
+}
+
+void printVectorGrid(vector2grid g) {
+	printf("	Grid - ( %d , %d )\n",g.x, g.y);
 }
 
 void printParticle(particle_t *p, long long int nr_part) {
-	printf("particle-%lld\n", nr_part);
+	printf("Particle - %lld\n", nr_part);
 	printVectorPosition(p[nr_part].position);
 	printVectorVelocity(p[nr_part].velocity);
+	printVectorGrid(p[nr_part].gridCoordinate);
 }
 
 void printAllParticles(particle_t *p, long long int nr_part) {
@@ -74,4 +79,10 @@ void printAllParticles(particle_t *p, long long int nr_part) {
 		printParticle(p, i);
 		i++;
 	}
+}
+
+void printCenter(particle_t p) {
+	printf("Center of Mass\n");
+	printVectorPosition(p.position);
+	printVectorVelocity(p.velocity);
 }

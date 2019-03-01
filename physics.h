@@ -8,15 +8,23 @@ typedef struct _vector2{
 	double y;
 } vector2;
 
-typedef struct _particle_t{
+typedef struct _vector2grid{
+	int x;
+	int y;
+} vector2grid;
+
+typedef struct _particle_t {
+	double m;
 	vector2 position;
 	vector2 velocity;
-	/*double x;
-	double y;
-	double vx;
-	double vy;*/
-	double m;
+	vector2grid gridCoordinate;
+	//_particle_t *nextParticle;
 } particle_t;
+
+typedef struct _grid_t{
+	long  dimension;
+	particle_t **cells;
+} grid_t;
 
 
 
@@ -32,5 +40,7 @@ vector2 calculateGravForce(particle_t p1, particle_t massCenter);
 void printParticle(particle_t *p, long long int nr_part);
 
 void printAllParticles(particle_t *p, long long int nr_part);
+
+void printCenter(particle_t p);
 
 #endif
