@@ -2,6 +2,7 @@
 #define PHYSICS_H
 
 #define G 6.67408e-11
+#define EPSLON 0.01
 
 typedef struct _vector2{
 	double x;
@@ -18,12 +19,13 @@ typedef struct _particle_t {
 	vector2 position;
 	vector2 velocity;
 	vector2grid gridCoordinate;
+	vector2 appliedForce;
 	//_particle_t *nextParticle;
 } particle_t;
 
 typedef struct _grid_t{
 	long  dimension;
-	particle_t **cells;
+	particle_t ***cells;
 } grid_t;
 
 
@@ -37,7 +39,11 @@ particle_t calculateCenterOfMass(particle_t *par, long long n_part);
 
 vector2 calculateGravForce(particle_t p1, particle_t massCenter);
 
-void printParticle(particle_t *p, long long int nr_part);
+vector2 calculateNextPosition(particle_t particle); // x = x0 + v0t + 0.5 a t^2 (t = 1)
+
+vector2 calculateNextVelocity(particle_t particle); // v = v0 + at (t = 1)
+
+void printParticle(particle_t p);
 
 void printAllParticles(particle_t *p, long long int nr_part);
 

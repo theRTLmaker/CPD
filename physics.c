@@ -47,10 +47,35 @@ particle_t calculateCenterOfMass(particle_t *par, long long n_part){
 vector2 calculateGravForce(particle_t p1, particle_t massCenter){
 	vector2 gravForce;
 	double gravForceMag;
+
 	vector2 forceDirection = subVectors(massCenter.position, p1.position);
+
 	double distance = vectorNorm(forceDirection);
-	gravForceMag = (p1.m * massCenter.m * G) /(distance*distance);
+	if(distance < EPSLON)
+		gravForceMag = 0;
+	else
+		gravForceMag = (p1.m * massCenter.m * G) /(distance*distance);
+
 	return multiplyVectorByConst(gravForceMag / distance, forceDirection);
+}
+
+vector2 calculateNextPosition(particle_t particle){ // x = x0 + v0t + 0.5 a t^2 (t = 1) a = F/m
+	vector2 a = multiplyVectorByConst(1/particle.m, particle.appliedForce); //a = F/m
+	vector2 newPos = addVectors(particle.position, addVectors(particle.velocity, multiplyVectorByConst(0.5, a))); //x = x0 + v0t + 0.5 a t^2 (t = 1)
+
+	if(newPos.x >= 1) newPos.x = newPos.x - floor(newPos.x);
+	else if(newPos.x < 0) newPos.x = 1 + (newPos.x - ceil(newPos.x)); 
+
+	if(newPos.y >= 1) newPos.y = newPos.y - floor(newPos.x);
+	else if(newPos.y < 0) newPos.y = 1 + (newPos.y - ceil(newPos.y));
+
+	return newPos;
+} 
+
+vector2 calculateNextVelocity(particle_t particle){ // v = v0 + at (t = 1)
+	vector2 a = multiplyVectorByConst(1/particle.m, particle.appliedForce); //a = F/m
+	vector2 newVel = addVectors(particle.velocity, a);
+	return newVel;
 }
 
 void printVectorPosition(vector2 p){
@@ -65,18 +90,22 @@ void printVectorGrid(vector2grid g) {
 	printf("	Grid - ( %d , %d )\n",g.x, g.y);
 }
 
-void printParticle(particle_t *p, long long int nr_part) {
-	printf("Particle - %lld\n", nr_part);
-	printVectorPosition(p[nr_part].position);
-	printVectorVelocity(p[nr_part].velocity);
-	printVectorGrid(p[nr_part].gridCoordinate);
+
+
+void printParticle(particle_t p) {
+	printVectorPosition(p.position);
+	printVectorVelocity(p.velocity);
+	printVectorGrid(p.gridCoordinate);
+	printf("	Force - ( %lf , %lf )\n", p.appliedForce.x, p.appliedForce.y);
+	printf("	mass: %1f\n", p.m);
 }
 
 void printAllParticles(particle_t *p, long long int nr_part) {
 	long long int i = 0;
 	while(i < nr_part) 
-	{
-		printParticle(p, i);
+	{	
+		printf("Particle - %lld\n", i);
+		printParticle(p[i]);
 		i++;
 	}
 }
@@ -85,4 +114,5 @@ void printCenter(particle_t p) {
 	printf("Center of Mass\n");
 	printVectorPosition(p.position);
 	printVectorVelocity(p.velocity);
+	printf("	mass: %1f\n", p.m);
 }

@@ -13,4 +13,6 @@ particle_t *** CreateParticleGrid(long long int n_part);
 
 grid_t initGrid(grid_t grid, long ncside);
 
+void freeEverything(particle_t *par, particle_t ***particleGrid, long long int n_part);
+
 #endif

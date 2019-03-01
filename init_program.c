@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 #define RND0_1 ((double) random() / ((long long)1<<31))
-#define EPSLON 0.01
+
 
 
 particle_t *handler_input(int argc ,char *argv[]) {
@@ -11,6 +11,7 @@ particle_t *handler_input(int argc ,char *argv[]) {
 	long seed = 0;
 	long ncside = 0;
 	long long int n_part = 0;
+	long long int timeStep = 0;
 
 	if(argc != 5){
 		printf("Wrong number of input parameteres\n");
@@ -24,7 +25,8 @@ particle_t *handler_input(int argc ,char *argv[]) {
 	n_part = atoll(argv[3]);
 	//printf("n_part = %lld\n", n_part);
 	//time step ?????
-	
+	timeStep = atoll(argv[4]);
+
 	if(seed < 0 || ncside < 0 || n_part < 0){
 		printf("Wrong parameteres\n");
 		exit(0);
@@ -98,4 +100,17 @@ void init_particles(long seed, long ncside, long long int n_part, particle_t *pa
 
         par[i] = findPosition(par[i], ncside);
     }
+}
+
+
+void freeEverything(particle_t *par, particle_t ***particleGrid, long long int n_part){
+	free(par);
+
+	/*for(int i = 0; i < n_part; i++) {
+		free(particleGrid[i]);
+	}*/
+
+	//free(particleGrid);
+
+	return;
 }

@@ -12,15 +12,32 @@ int main(int argc, char *argv[])
 	particle_t center;
 	int nr_part; 
 	int i = 0;
+	int j = 0;
 
 	par = handler_input(argc, argv);
 	nr_part = atoll(argv[3]);
+	long long int timeStep = atoll(argv[4]);
+	
 
-	printAllParticles(par, nr_part);
 
-	center = calculateCenterOfMass(par, nr_part); 
 
-	printCenter(center);
+	//Tá com um erro esquisito
+	for (j = 0; j < timeStep; j++)
+	{
+		center = calculateCenterOfMass(par, nr_part); 
+
+		for(i = 0; i<nr_part; i++){
+			par[i].appliedForce = calculateGravForce(par[i], center);
+			par[i].position = calculateNextPosition(par[i]);
+			par[i].velocity = calculateNextVelocity(par[i]);
+		}
+
+		printAllParticles(par, nr_part);
+		
+		printCenter(center);
+	}
+
+	freeEverything(par, grid.cells, nr_part);
 	return 0;
 }
 
