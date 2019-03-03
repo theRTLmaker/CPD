@@ -6,12 +6,9 @@
 
 
 
-particle_t *handler_input(int argc ,char *argv[]) {
+particle_t *handler_input(int argc ,char *argv[], parameters *param) {
 	particle_t *par;
 	long seed = 0;
-	long ncside = 0;
-	long long int n_part = 0;
-	long long int timeStep = 0;
 
 	if(argc != 5){
 		printf("Wrong number of input parameteres\n");
@@ -20,21 +17,21 @@ particle_t *handler_input(int argc ,char *argv[]) {
 
 	seed = atol(argv[1]);
 	//printf("seed = %ld\n", seed );
-	ncside = atol(argv[2]);
+	param -> ncside = atol(argv[2]);
 	//printf("ncside = %ld\n", ncside );
-	n_part = atoll(argv[3]);
+	param -> n_part = atoll(argv[3]);
 	//printf("n_part = %lld\n", n_part);
 	//time step ?????
-	timeStep = atoll(argv[4]);
+	param -> timeStep = atoll(argv[4]);
 
-	if(seed < 0 || ncside < 0 || n_part < 0){
+	if(seed < 0 || param -> ncside < 0 || param -> n_part < 0){
 		printf("Wrong parameteres\n");
 		exit(0);
 	}
 
-	par = CreateParticleArray(n_part);
+	par = CreateParticleArray(param -> n_part);
 
-	init_particles(seed, ncside, n_part, par);
+	init_particles(seed, param -> ncside, param -> n_part, par);
 
 	return par;
 }
@@ -52,15 +49,15 @@ particle_t * CreateParticleArray(long long int n_part) {
 }
 
 
-particle_t *** CreateParticleGrid(long long int n_part) {
-	particle_t ***cells = (particle_t***) malloc(n_part*sizeof(particle_t**));
+gridCell ** CreateParticleGrid(long long int n_part) {
+	gridCell **cells = (gridCell**) malloc(n_part*sizeof(gridCell *));
 	if(cells ==NULL) {
 		printf("ERROR malloc\n");
 		exit(0);
 	}
 
 	for(int i = 0; i < n_part; i++) {
-		cells[i] = (particle_t**) malloc(n_part*sizeof(particle_t*));
+		cells[i] = (gridCell *) malloc(n_part*sizeof(gridCell));
 		if(cells[i] == NULL) {
 			printf("ERROR malloc\n");
 			exit(0);
@@ -93,17 +90,19 @@ void init_particles(long seed, long ncside, long long int n_part, particle_t *pa
     for(i = 0; i < n_part; i++) {
         par[i].position.x = RND0_1;
         par[i].position.y = RND0_1;
-        par[i].velocity.x = RND0_1 / ncside / 10.0;
-        par[i].velocity.y = RND0_1 / ncside / 10.0;
+        par[i].velocity.x = 0;//RND0_1 / ncside / 10.0;
+        par[i].velocity.y = 0;//RND0_1 / ncside / 10.0;
 
         par[i].m = RND0_1 * ncside / (G * 1e6 * n_part);
 
         par[i] = findPosition(par[i], ncside);
+
+        par[i].pastPositions = (vector2 *)malloc(1000* sizeof(vector2));
     }
 }
 
 
-void freeEverything(particle_t *par, particle_t ***particleGrid, long long int n_part){
+void freeEverything(particle_t *par, gridCell **particleGrid, long long int n_part){
 	free(par);
 
 	/*for(int i = 0; i < n_part; i++) {

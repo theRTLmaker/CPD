@@ -5,8 +5,8 @@
 #define EPSLON 0.01
 
 typedef struct _vector2{
-	double x;
-	double y;
+	long double x;
+	long double y;
 } vector2;
 
 typedef struct _vector2grid{
@@ -15,17 +15,24 @@ typedef struct _vector2grid{
 } vector2grid;
 
 typedef struct _particle_t {
-	double m;
+	long double m;
 	vector2 position;
 	vector2 velocity;
 	vector2grid gridCoordinate;
 	vector2 appliedForce;
+	vector2 *pastPositions;
 	//_particle_t *nextParticle;
 } particle_t;
 
+typedef struct _gridcell{
+	particle_t massCenter;
+	particle_t *particles;
+} gridCell;
+
 typedef struct _grid_t{
 	long  dimension;
-	particle_t ***cells;
+	//particle_t ***cells;
+	gridCell **cells;
 } grid_t;
 
 

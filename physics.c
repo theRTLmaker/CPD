@@ -79,11 +79,11 @@ vector2 calculateNextVelocity(particle_t particle){ // v = v0 + at (t = 1)
 }
 
 void printVectorPosition(vector2 p){
-	printf("	Position - ( %lf , %lf )\n", p.x, p.y);
+	printf("	Position - ( %Lf , %Lf )\n", p.x, p.y);
 }
 
 void printVectorVelocity(vector2 v) {
-	printf("	Velocity - ( %lf , %lf )\n",v.x, v.y);
+	printf("	Velocity - ( %Lf , %Lf )\n",v.x, v.y);
 }
 
 void printVectorGrid(vector2grid g) {
@@ -96,8 +96,8 @@ void printParticle(particle_t p) {
 	printVectorPosition(p.position);
 	printVectorVelocity(p.velocity);
 	printVectorGrid(p.gridCoordinate);
-	printf("	Force - ( %lf , %lf )\n", p.appliedForce.x, p.appliedForce.y);
-	printf("	mass: %1f\n", p.m);
+	printf("	Force - ( %Lf , %Lf )\n", p.appliedForce.x, p.appliedForce.y);
+	printf("	mass: %Lf\n", p.m);
 }
 
 void printAllParticles(particle_t *p, long long int nr_part) {
@@ -114,5 +114,5 @@ void printCenter(particle_t p) {
 	printf("Center of Mass\n");
 	printVectorPosition(p.position);
 	printVectorVelocity(p.velocity);
-	printf("	mass: %1f\n", p.m);
+	printf("	mass: %Lf\n", p.m);
 }
