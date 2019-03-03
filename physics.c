@@ -4,6 +4,13 @@
 #include <math.h>
 
 
+
+int constrain(int size, int n){
+	if(n == -1) n += size;
+	else if(n == size) n -= size;
+	return n;
+}
+
 double vectorNorm(vector2 a){
 	return sqrt(a.x * a.x + a.y * a.y);
 }
@@ -29,18 +36,25 @@ vector2 multiplyVectorByConst(double c, vector2 v){
 	return r;
 }
 
-particle_t calculateCenterOfMass(particle_t *par, long long n_part){
-	long long i;
+particle_t calculateCenterOfMass(particle_t *head){
 	particle_t center;
 	center.position.x = 0;
 	center.position.y = 0;
 	center.m = 0;
-	for(i = 0; i < n_part; i++)
-    {
-        center.position = addVectors(center.position, multiplyVectorByConst(par[i].m, par[i].position));
-        center.m += par[i].m;
-    }
+
+	if(head == NULL)
+		return center;
+
+
+	particle_t *cur = head;
+
+	while(cur != NULL){
+		center.position = addVectors(center.position, multiplyVectorByConst(cur -> m, cur -> position));
+        center.m += cur -> m;
+		cur = cur -> nextParticle;
+	}
     center.position = multiplyVectorByConst(1/center.m, center.position);
+
     return center;
 }
 

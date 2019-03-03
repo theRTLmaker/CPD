@@ -102,14 +102,14 @@ void init_particles(long seed, long ncside, long long int n_part, particle_t *pa
 }
 
 
-void freeEverything(particle_t *par, gridCell **particleGrid, long long int n_part){
+void freeEverything(particle_t *par, gridCell **particleGrid, long long int nside){
 	free(par);
 
-	/*for(int i = 0; i < n_part; i++) {
+	for(int i = 0; i < nside; i++) {
 		free(particleGrid[i]);
-	}*/
+	}
 
-	//free(particleGrid);
+	free(particleGrid);
 
 	return;
 }

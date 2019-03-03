@@ -20,6 +20,6 @@ gridCell ** CreateParticleGrid(long long int n_part);
 
 grid_t initGrid(grid_t grid, long ncside);
 
-void freeEverything(particle_t *par, gridCell **particleGrid, long long int n_part);
+void freeEverything(particle_t *par, gridCell **particleGrid, long long int nside);
 
 #endif

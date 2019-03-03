@@ -21,7 +21,7 @@ typedef struct _particle_t {
 	vector2grid gridCoordinate;
 	vector2 appliedForce;
 	vector2 *pastPositions;
-	//_particle_t *nextParticle;
+	struct _particle_t * nextParticle;
 } particle_t;
 
 typedef struct _gridcell{
@@ -37,12 +37,12 @@ typedef struct _grid_t{
 
 
 
-
+int constrain(int size, int n);
 vector2 addVectors(vector2 a, vector2 b);
 vector2 subVectors(vector2 a, vector2 b);
 vector2 multiplyVectorByConst(double c, vector2 v);
 
-particle_t calculateCenterOfMass(particle_t *par, long long n_part);
+particle_t calculateCenterOfMass(particle_t *head);
 
 vector2 calculateGravForce(particle_t p1, particle_t massCenter);
 
