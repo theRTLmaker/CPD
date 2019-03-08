@@ -46,29 +46,30 @@ particle_t * CreateParticleArray(long long int n_part) {
 	return par;
 }
 
-
-gridCell ** CreateParticleGrid(long long int n_part) {
-	gridCell **cells = (gridCell**) malloc(n_part*sizeof(gridCell *));
-	if(cells ==NULL) {
+grid_t initGrid(grid_t grid, long ncside) {
+	grid.centerOfMass = (vector2**) malloc(ncside*sizeof(vector2 *));
+	if(grid.centerOfMass ==NULL) {
 		printf("ERROR malloc\n");
 		exit(0);
 	}
-
-	for(int i = 0; i < n_part; i++) {
-		cells[i] = (gridCell *) malloc(n_part*sizeof(gridCell));
-		if(cells[i] == NULL) {
+	grid.m = (long double **) malloc(ncside*sizeof(long double *));
+	if(grid.m ==NULL) {
+		printf("ERROR malloc\n");
+		exit(0);
+	}
+	for(int i = 0; i < ncside; i++) {
+		grid.centerOfMass[i] = (vector2 *) malloc(ncside*sizeof(vector2));
+		if(grid.centerOfMass[i] == NULL) {
+			printf("ERROR malloc\n");
+			exit(0);
+		}
+		grid.m[i] = (long double *) malloc(ncside*sizeof(long double));
+		if(grid.m[i] == NULL) {
 			printf("ERROR malloc\n");
 			exit(0);
 		}
 	}
-
-	return cells;
-}
-
-grid_t initGrid(grid_t grid, long ncside) {
-	grid.dimension = ncside;
-	grid.cells = CreateParticleGrid(ncside);
-
+	
 	return grid;
 }
 
@@ -102,14 +103,16 @@ void init_particles(long seed, long ncside, long long int n_part, particle_t *pa
 }
 
 
-void freeEverything(particle_t *par, gridCell **particleGrid, long long int nside){
+void freeEverything(particle_t *par, grid_t particleGrid, long long int nside){
 	free(par);
 
 	for(int i = 0; i < nside; i++) {
-		free(particleGrid[i]);
+			free(particleGrid.m[i]);
+			free(particleGrid.centerOfMass[i]);
 	}
 
-	free(particleGrid);
+	free(particleGrid.m);
+	free(particleGrid.centerOfMass);
 
 	return;
 }

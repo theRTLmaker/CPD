@@ -31,15 +31,9 @@ typedef struct _particle_t {
 	struct _particle_t * nextParticle;
 } particle_t;
 
-typedef struct _gridcell{
-	particle_t massCenter;
-	particle_t *particles;
-} gridCell;
-
 typedef struct _grid_t{
-	long  dimension;
-	//particle_t ***cells;
-	gridCell **cells;
+	long double **m;
+	vector2 **centerOfMass;
 } grid_t;
 
 
@@ -53,7 +47,7 @@ int compareVectorsGrid(vector2grid a, vector2grid b);
 
 particle_t calculateCenterOfMass(particle_t *head);
 
-vector2 calculateGravForce(particle_t p1, particle_t massCenter, int sideUPDOWN, int sideLEFTRIGHT);
+vector2 calculateGravForce(particle_t p1, vector2 massCenter, long double m, int sideUPDOWN, int sideLEFTRIGHT);
 
 vector2 calculateNextPosition(particle_t particle); // x = x0 + v0t + 0.5 a t^2 (t = 1)
 

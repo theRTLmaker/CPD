@@ -25,24 +25,34 @@ int main(int argc, char *argv[])
 	// Init Grid
 	grid = initGrid(grid, params.ncside);
 
-	// Assign particles to corresponding cell
-	for(i = 0; i < params.n_part; i++) {
-		grid.cells[ par[i].gridCoordinate.x ][ par[i].gridCoordinate.y ].particles = addParticle(grid.cells[ par[i].gridCoordinate.x ][ par[i].gridCoordinate.y ].particles, &par[i]);
-	}
-
 	// Time Step simulation
 	for (k = 0; k < params.timeStep; k++) {
 		printf("TIME STEP %d\n", k);
 		// Run throw all the cells and computes all the center of mass
-		for(i = 0; i < params.ncside; i++) {
-			for (j = 0; j < params.ncside; j++)	{
-				grid.cells[i][j].massCenter = calculateCenterOfMass(grid.cells[i][j].particles);
+
+		for (int i = 0; i < params.ncside; ++i) {
+			for (int j = 0; j < params.ncside; ++j) {
+				grid.m[i][j] = 0;
+				grid.centerOfMass[i][j].x = 0;
+				grid.centerOfMass[i][j].y = 0;
 			}
 		}
+
+		// Calculate center of mass of each grid cell
+		for(i = 0; i < params.n_part; i++) {
+			grid.centerOfMass[par[i].gridCoordinate.x][par[i].gridCoordinate.y] = addVectors(multiplyVectorByConst(par[i].m, par[i].position) ,grid.centerOfMass[par[i].gridCoordinate.x][par[i].gridCoordinate.y]);
+			grid.m[par[i].gridCoordinate.x][par[i].gridCoordinate.y] += par[i].m;
+		}
+		for (int i = 0; i < params.ncside; ++i){
+			for (int j = 0; j < params.ncside; ++j){
+				grid.centerOfMass[i][j] = multiplyVectorByConst(1/grid.m[i][j] ,grid.centerOfMass[i][j]);
+			}
+		}
+
 		// Compute interactions
 		// Run all particles
 		for(i=0; i < params.n_part; i++){
-			printf("	PARTICLE %d\n", i);
+			//printf("	PARTICLE %d\n", i);
 			par[i].appliedForce.x = 0;
 			par[i].appliedForce.y = 0;
 
@@ -66,27 +76,16 @@ int main(int argc, char *argv[])
 
 					aux2 = constrain(params.ncside, par[i].gridCoordinate.y+m);
 
-					par[i].appliedForce = addVectors(par[i].appliedForce, calculateGravForce(par[i], grid.cells[ aux1 ][ aux2 ].massCenter, sideUPDOWN, sideLEFTRIGHT)); //for each adjacent cell.---- 
+					par[i].appliedForce = addVectors(par[i].appliedForce, calculateGravForce(par[i], grid.centerOfMass[ aux1 ][ aux2 ], grid.m[ aux1 ][ aux2 ], sideUPDOWN, sideLEFTRIGHT)); //for each adjacent cell.---- 
 				}
 			}
-			// Updates particles position and velocity
+			// Updates particles position and velocity and position on the grid
 			par[i].velocity = calculateNextVelocity(par[i]);
 			par[i].position = calculateNextPosition(par[i]);
 
 			par[i].pastPositions[k] = par[i].position;
 
-
-			vector2grid aux = findPosition(par[i], params.ncside);
-
-			if(!compareVectorsGrid(aux, par[i].gridCoordinate)) {
-				removeParticle(grid.cells[par[i].gridCoordinate.x][par[i].gridCoordinate.y].particles, &par[i]);
-
-				// new position on the grid
-				par[i].gridCoordinate = aux;
-
-				grid.cells[par[i].gridCoordinate.x][par[i].gridCoordinate.y].particles = 
-						addParticle(grid.cells[par[i].gridCoordinate.x][par[i].gridCoordinate.y].particles, &par[i]);
-			}
+			par[i].gridCoordinate = findPosition(par[i], params.ncside);
 		}
 	}
 
@@ -118,7 +117,7 @@ int main(int argc, char *argv[])
 	fclose(fp);*/
 	/*FILE output for debugging*/
 
-	freeEverything(par, grid.cells, params.ncside);
+	freeEverything(par, grid, params.ncside);
 	return 0;
 }
 

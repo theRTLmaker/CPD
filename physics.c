@@ -65,17 +65,17 @@ particle_t calculateCenterOfMass(particle_t *head){
     return center;
 }
 
-vector2 calculateGravForce(particle_t p1, particle_t massCenter, int sideUPDOWN, int sideLEFTRIGHT){
+vector2 calculateGravForce(particle_t p1, vector2 massCenter, long double m, int sideUPDOWN, int sideLEFTRIGHT){
 	double gravForceMag;
 
 	vector2 forceDirection;
 
-	if(massCenter.m == 0) {
+	if(m == 0) {
 		forceDirection.x = 0;
 		forceDirection.y = 0;
 		return forceDirection;
 	}
-	vector2 aux = massCenter.position;
+	vector2 aux = massCenter;
 
 	switch(sideUPDOWN) {
 		case(UP):
@@ -105,7 +105,7 @@ vector2 calculateGravForce(particle_t p1, particle_t massCenter, int sideUPDOWN,
 	if(distance < EPSLON)
 		gravForceMag = 0;
 	else
-		gravForceMag = (p1.m * massCenter.m * G) /(distance*distance);
+		gravForceMag = (p1.m * m * G) /(distance*distance);
 
 	return multiplyVectorByConst(gravForceMag / distance, forceDirection);
 }
