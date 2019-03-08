@@ -36,6 +36,13 @@ vector2 multiplyVectorByConst(double c, vector2 v){
 	return r;
 }
 
+int compareVectorsGrid(vector2grid a, vector2grid b) {
+	if(a.x == b.x && a.y == b.y)
+		return 1;
+
+	return 0;
+}
+
 particle_t calculateCenterOfMass(particle_t *head){
 	particle_t center;
 	center.position.x = 0;
@@ -58,11 +65,41 @@ particle_t calculateCenterOfMass(particle_t *head){
     return center;
 }
 
-vector2 calculateGravForce(particle_t p1, particle_t massCenter){
-	vector2 gravForce;
+vector2 calculateGravForce(particle_t p1, particle_t massCenter, int sideUPDOWN, int sideLEFTRIGHT){
 	double gravForceMag;
 
-	vector2 forceDirection = subVectors(massCenter.position, p1.position);
+	vector2 forceDirection;
+
+	if(massCenter.m == 0) {
+		forceDirection.x = 0;
+		forceDirection.y = 0;
+		return forceDirection;
+	}
+	vector2 aux = massCenter.position;
+
+	switch(sideUPDOWN) {
+		case(UP):
+			aux.y += 1;
+			break;
+		case(DOWN):
+			aux.y -= 1;
+			break;
+		default:
+			break;
+	}
+
+	switch(sideLEFTRIGHT) {
+		case(LEFT):
+			aux.x -= 1;
+			break;
+		case(RIGHT):
+			aux.x += 1;
+			break;
+		default:
+			break;
+	}
+
+	forceDirection = subVectors(aux, p1.position);
 
 	double distance = vectorNorm(forceDirection);
 	if(distance < EPSLON)
@@ -80,7 +117,7 @@ vector2 calculateNextPosition(particle_t particle){ // x = x0 + v0t + 0.5 a t^2 
 	if(newPos.x >= 1) newPos.x = newPos.x - floor(newPos.x);
 	else if(newPos.x < 0) newPos.x = 1 + (newPos.x - ceil(newPos.x)); 
 
-	if(newPos.y >= 1) newPos.y = newPos.y - floor(newPos.x);
+	if(newPos.y >= 1) newPos.y = newPos.y - floor(newPos.y);
 	else if(newPos.y < 0) newPos.y = 1 + (newPos.y - ceil(newPos.y));
 
 	return newPos;

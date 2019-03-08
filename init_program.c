@@ -43,8 +43,6 @@ particle_t * CreateParticleArray(long long int n_part) {
 		exit(0);
 	}
 
-	//par->nextParticle = NULL;
-
 	return par;
 }
 
@@ -74,11 +72,12 @@ grid_t initGrid(grid_t grid, long ncside) {
 	return grid;
 }
 
-particle_t findPosition(particle_t par, long ncside) {
-	par.gridCoordinate.x = par.position.x * ncside / 1;
-	par.gridCoordinate.y = par.position.y * ncside / 1;
+vector2grid findPosition(particle_t par, long ncside) {
+	vector2grid vector;
+	vector.x = par.position.x * ncside / 1;
+	vector.y = par.position.y * ncside / 1;
 
-	return par;
+	return vector;
 }
 
 
@@ -87,15 +86,16 @@ void init_particles(long seed, long ncside, long long int n_part, particle_t *pa
 
     srandom(seed);
 
-    for(i = 0; i < n_part; i++) {
-        par[i].position.x = RND0_1;
+    for(i = 0; i < n_part; i++) {        
+		par[i].position.x = RND0_1;
         par[i].position.y = RND0_1;
-        par[i].velocity.x = 0;//RND0_1 / ncside / 10.0;
-        par[i].velocity.y = 0;//RND0_1 / ncside / 10.0;
+        
+        par[i].velocity.x = RND0_1 / ncside / 10.0;
+        par[i].velocity.y = RND0_1 / ncside / 10.0;
 
         par[i].m = RND0_1 * ncside / (G * 1e6 * n_part);
 
-        par[i] = findPosition(par[i], ncside);
+        par[i].gridCoordinate = findPosition(par[i], ncside);
 
         par[i].pastPositions = (vector2 *)malloc(1000* sizeof(vector2));
     }

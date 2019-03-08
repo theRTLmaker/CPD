@@ -12,6 +12,8 @@ typedef struct _parameters{
 
 particle_t * handler_input(int argc ,char *argv[], parameters *param);
 
+vector2grid findPosition(particle_t par, long ncside);
+
 void init_particles(long seed, long ncside, long long n_part, particle_t *par);
 
 particle_t * CreateParticleArray(long long int n_part);

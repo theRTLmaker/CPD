@@ -1,12 +1,17 @@
-CFLAGS= -O2 -Ofast -Wall -std=gnu11
+CC=gcc
+CFLAGS= -O2 -I. -lm -Wall -std=gnu11
+DEPS = debug.h init_program.h linkedList.h physics.h
+OBJ =  debug.c init_program.c linkedList.c physics.c simpar.c
 
 default: simpar
 
 all: simpar
 
+%.o: %.c $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS)
 
-simpar: simpar.c physics.c init_program.c
-	gcc physics.c init_program.c simpar.c -o simpar $(CFLAGS)
+simpar: $(OBJ)
+	$(CC) -o $@ $^ $(CFLAGS)
 
 clean:
 	rm -f *.o simpar 

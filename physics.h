@@ -4,6 +4,13 @@
 #define G 6.67408e-11
 #define EPSLON 0.01
 
+#define MIDDLE -1
+#define DOWN 0
+#define UP 1
+#define LEFT 2
+#define RIGHT 3
+
+
 typedef struct _vector2{
 	long double x;
 	long double y;
@@ -42,9 +49,11 @@ vector2 addVectors(vector2 a, vector2 b);
 vector2 subVectors(vector2 a, vector2 b);
 vector2 multiplyVectorByConst(double c, vector2 v);
 
+int compareVectorsGrid(vector2grid a, vector2grid b);
+
 particle_t calculateCenterOfMass(particle_t *head);
 
-vector2 calculateGravForce(particle_t p1, particle_t massCenter);
+vector2 calculateGravForce(particle_t p1, particle_t massCenter, int sideUPDOWN, int sideLEFTRIGHT);
 
 vector2 calculateNextPosition(particle_t particle); // x = x0 + v0t + 0.5 a t^2 (t = 1)
 
