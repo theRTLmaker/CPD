@@ -5,15 +5,17 @@
 
 
 
-int constrain(int size, int n){
+#define vectorNorm(a) (sqrt(a.x * a.x + a.y * a.y))
+
+/*int constrain(int size, int n){
 	if(n == -1) n += size;
 	else if(n == size) n -= size;
 	return n;
-}
+}*/
 
-double vectorNorm(vector2 a){
+/*double vectorNorm(vector2 a){
 	return sqrt(a.x * a.x + a.y * a.y);
-}
+}*/
 
 vector2 addVectors(vector2 a, vector2 b){
 	vector2 r;
@@ -102,8 +104,10 @@ vector2 calculateGravForce(particle_t p1, vector2 massCenter, long double m, int
 	forceDirection = subVectors(aux, p1.position);
 
 	double distance = vectorNorm(forceDirection);
-	if(distance < EPSLON)
+	if(distance < EPSLON){
 		gravForceMag = 0;
+		distance = 1;
+	}
 	else
 		gravForceMag = (p1.m * m * G) /(distance*distance);
 
@@ -129,41 +133,3 @@ vector2 calculateNextVelocity(particle_t particle){ // v = v0 + at (t = 1)
 	return newVel;
 }
 
-void printVectorPosition(vector2 p){
-	printf("	Position - ( %Lf , %Lf )\n", p.x, p.y);
-}
-
-void printVectorVelocity(vector2 v) {
-	printf("	Velocity - ( %Lf , %Lf )\n",v.x, v.y);
-}
-
-void printVectorGrid(vector2grid g) {
-	printf("	Grid - ( %d , %d )\n",g.x, g.y);
-}
-
-
-
-void printParticle(particle_t p) {
-	printVectorPosition(p.position);
-	printVectorVelocity(p.velocity);
-	printVectorGrid(p.gridCoordinate);
-	printf("	Force - ( %Lf , %Lf )\n", p.appliedForce.x, p.appliedForce.y);
-	printf("	mass: %Lf\n", p.m);
-}
-
-void printAllParticles(particle_t *p, long long int nr_part) {
-	long long int i = 0;
-	while(i < nr_part) 
-	{	
-		printf("Particle - %lld\n", i);
-		printParticle(p[i]);
-		i++;
-	}
-}
-
-void printCenter(particle_t p) {
-	printf("Center of Mass\n");
-	printVectorPosition(p.position);
-	printVectorVelocity(p.velocity);
-	printf("	mass: %Lf\n", p.m);
-}

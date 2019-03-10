@@ -36,9 +36,11 @@ typedef struct _grid_t{
 	vector2 **centerOfMass;
 } grid_t;
 
+#define constrain(size, n) ((n)==-1 ? (n + size):(((n)==size?(n - size):n)):n)
+#define SUM_A( x, y )  ((x) == 0 || (y) == 0 ? 0 : ( ( ( (x) * (x) ) / ( ( x ) + ( y ) ) ) * ( y ) ))
 
 
-int constrain(int size, int n);
+//int constrain(int size, int n);
 vector2 addVectors(vector2 a, vector2 b);
 vector2 subVectors(vector2 a, vector2 b);
 vector2 multiplyVectorByConst(double c, vector2 v);
@@ -53,10 +55,5 @@ vector2 calculateNextPosition(particle_t particle); // x = x0 + v0t + 0.5 a t^2 
 
 vector2 calculateNextVelocity(particle_t particle); // v = v0 + at (t = 1)
 
-void printParticle(particle_t p);
-
-void printAllParticles(particle_t *p, long long int nr_part);
-
-void printCenter(particle_t p);
 
 #endif

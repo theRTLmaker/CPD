@@ -87,7 +87,9 @@ int main(int argc, char *argv[])
 
 			par[i].gridCoordinate = findPosition(par[i], params.ncside);
 		}
+
 	}
+	
 
 	centerOfMass.x = 0;
 	centerOfMass.y = 0;
