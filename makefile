@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS= -g -I. -lm -Wall -std=gnu11
-DEPS = debug.h init_program.h linkedList.h physics.h
-OBJ =  debug.c init_program.c linkedList.c physics.c simpar.c
+DEPS = debug.h init_program.h physics.h
+OBJ =  debug.c init_program.c physics.c simpar.c
 
 default: simpar
 

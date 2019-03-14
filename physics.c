@@ -1,30 +1,14 @@
 #include "physics.h"
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 
-
-
-#define vectorNorm(a) (sqrt(a.x * a.x + a.y * a.y))
-
-/*int constrain(int size, int n){
-	if(n == -1) n += size;
-	else if(n == size) n -= size;
-	return n;
-}*/
-
-/*double vectorNorm(vector2 a){
-	return sqrt(a.x * a.x + a.y * a.y);
-}*/
-
-vector2 addVectors(vector2 a, vector2 b){
+inline vector2 addVectors(vector2 a, vector2 b) {
 	vector2 r;
 	r.x = a.x + b.x;
 	r.y = a.y + b.y;
 	return r;
 }
 
-vector2 subVectors(vector2 a, vector2 b){
+inline vector2 subVectors(vector2 a, vector2 b){
 	vector2 r;
 	r.x = a.x - b.x;
 	r.y = a.y - b.y;
@@ -36,35 +20,6 @@ vector2 multiplyVectorByConst(double c, vector2 v){
 	r.x = c*v.x;
 	r.y = c*v.y;
 	return r;
-}
-
-int compareVectorsGrid(vector2grid a, vector2grid b) {
-	if(a.x == b.x && a.y == b.y)
-		return 1;
-
-	return 0;
-}
-
-particle_t calculateCenterOfMass(particle_t *head){
-	particle_t center;
-	center.position.x = 0;
-	center.position.y = 0;
-	center.m = 0;
-
-	if(head == NULL)
-		return center;
-
-
-	particle_t *cur = head;
-
-	while(cur != NULL){
-		center.position = addVectors(center.position, multiplyVectorByConst(cur -> m, cur -> position));
-        center.m += cur -> m;
-		cur = cur -> nextParticle;
-	}
-    center.position = multiplyVectorByConst(1/center.m, center.position);
-
-    return center;
 }
 
 vector2 calculateGravForce(particle_t p1, vector2 massCenter, long double m, int sideUPDOWN, int sideLEFTRIGHT){
