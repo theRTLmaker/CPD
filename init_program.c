@@ -57,6 +57,11 @@ grid_t initGrid(grid_t grid, long ncside) {
 		printf("ERROR malloc\n");
 		exit(0);
 	}
+	grid.mask = (unsigned char **) malloc(ncside*sizeof(unsigned char *));
+	if(grid.mask ==NULL) {
+		printf("ERROR malloc\n");
+		exit(0);
+	}
 	for(int i = 0; i < ncside; i++) {
 		grid.centerOfMass[i] = (vector2 *) malloc(ncside*sizeof(vector2));
 		if(grid.centerOfMass[i] == NULL) {
@@ -65,6 +70,11 @@ grid_t initGrid(grid_t grid, long ncside) {
 		}
 		grid.m[i] = (long double *) malloc(ncside*sizeof(long double));
 		if(grid.m[i] == NULL) {
+			printf("ERROR malloc\n");
+			exit(0);
+		}
+		grid.mask[i] = (unsigned char  *) malloc(ncside * sizeof(unsigned char));
+		if(grid.mask[i] ==NULL) {
 			printf("ERROR malloc\n");
 			exit(0);
 		}

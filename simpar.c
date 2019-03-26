@@ -10,7 +10,7 @@
 
 int main(int argc, char *argv[])
 {
-	FILE *fp;
+	//FILE *fp;
 	grid_t grid;
 	vector2 centerOfMass;
 	particle_t *par;
@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 	int i = 0;
 	int j = 0, m, k, aux1, aux2;
 
-	fp = fopen("positions.txt", "w");
+	//fp = fopen("positions.txt", "w");
 
 	par = handler_input(argc, argv, &params);
 	
@@ -29,7 +29,6 @@ int main(int argc, char *argv[])
 	for (k = 0; k < params.timeStep; k++) {
 		printf("TIME STEP %d\n", k);
 		// Run throw all the cells and computes all the center of mass
-
 		for (int i = 0; i < params.ncside; ++i) {
 			for (int j = 0; j < params.ncside; ++j) {
 				grid.m[i][j] = 0;
@@ -44,8 +43,8 @@ int main(int argc, char *argv[])
 			grid.m[par[i].gridCoordinate.x][par[i].gridCoordinate.y] += par[i].m;
 		}
 		for (int i = 0; i < params.ncside; ++i){
-			for (int j = 0; j < params.ncside; ++j){
-				grid.centerOfMass[i][j] = multiplyVectorByConst(1/grid.m[i][j] ,grid.centerOfMass[i][j]);
+			for (int j = 0; j < params.ncside; ++j) {
+				grid.mask[i][j] = 0;
 			}
 		}
 
@@ -71,11 +70,19 @@ int main(int argc, char *argv[])
 						sideUPDOWN = DOWN;
 					if(par[i].gridCoordinate.y+m == params.ncside)
 						sideUPDOWN = UP;
-
-					aux1 = constrain(params.ncside, par[i].gridCoordinate.x+j);
-
-					aux2 = constrain(params.ncside, par[i].gridCoordinate.y+m);
-
+					
+					if(par[i].gridCoordinate.x+j == -1) aux1 = par[i].gridCoordinate.x+j + params.ncside;
+					else if(par[i].gridCoordinate.x+j == params.ncside) aux1 = par[i].gridCoordinate.x+j - params.ncside;
+					else aux1 = par[i].gridCoordinate.x+j;
+					
+					if(par[i].gridCoordinate.y+m == -1) aux2 = par[i].gridCoordinate.y+m + params.ncside;
+					else if(par[i].gridCoordinate.y+m == params.ncside) aux2 = par[i].gridCoordinate.y+m - params.ncside;
+					else aux2 = par[i].gridCoordinate.y+m;
+					
+					if(grid.mask[aux1][aux2] == 0) {
+						grid.centerOfMass[aux1][aux2] = multiplyVectorByConst(1/grid.m[aux1][aux2] ,grid.centerOfMass[aux1][aux2]);
+						grid.mask[aux1][aux2] = 1;
+					}
 					par[i].appliedForce = addVectors(par[i].appliedForce, calculateGravForce(par[i], grid.centerOfMass[ aux1 ][ aux2 ], grid.m[ aux1 ][ aux2 ], sideUPDOWN, sideLEFTRIGHT)); //for each adjacent cell.---- 
 				}
 			}
@@ -103,8 +110,8 @@ int main(int argc, char *argv[])
 
 	//printGrid(grid, params.ncside);
 
-	printf("Cell 0:\n x=%Lf\n y=%Lf\n", par[0].position.x, par[0].position.y);
-	printf("Center of mass:\n x=%Lf\n y=%Lf\n", centerOfMass.x, centerOfMass.y);
+	printf("%.2Lf %.2Lf\n", par[0].position.x, par[0].position.y);
+	printf("%.2Lf %.2Lf\n", centerOfMass.x, centerOfMass.y);
 	
 	/*FILE output for debugging*/
 	/*for (i = 0; i < params.n_part; i++)
