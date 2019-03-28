@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 	int k = 0;
 	int tid;
 
-	omp_set_num_threads(1);
+	omp_set_num_threads(4);
 
 	//fp = fopen("positions.txt", "w");
 	printf("Init particles\n");
@@ -50,9 +50,9 @@ int main(int argc, char *argv[])
 			if(tid == 0) {
 				// Calculate center of mass of each grid cell
 				for(int i = 0; i < params.n_part; i++) {
-					grid.centerOfMass[par[i].gridCoordinate.x][par[i].gridCoordinate.y] = addVectors(multiplyVectorByConst(par[i].m, par[i].position), 
-																									 grid.centerOfMass[par[i].gridCoordinate.x][par[i].gridCoordinate.y]);
-					grid.m[par[i].gridCoordinate.x][par[i].gridCoordinate.y] += par[i].m;
+					grid.centerOfMass[par[i].gridCoordinateX][par[i].gridCoordinateY] = addVectors(multiplyVectorByConst(par[i].m, par[i].position), 
+																									 grid.centerOfMass[par[i].gridCoordinateX][par[i].gridCoordinateY]);
+					grid.m[par[i].gridCoordinateX][par[i].gridCoordinateY] += par[i].m;
 				}
 			}
 			
@@ -76,22 +76,22 @@ int main(int argc, char *argv[])
 						int sideLEFTRIGHT = MIDDLE;
 						int aux1 = 0, aux2 = 0;
 
-						if(par[i].gridCoordinate.x+j == -1) 
+						if(par[i].gridCoordinateX+j == -1) 
 							sideLEFTRIGHT = LEFT;
-						if(par[i].gridCoordinate.x+j == params.ncside)
+						if(par[i].gridCoordinateX+j == params.ncside)
 							sideLEFTRIGHT = RIGHT;
-						if(par[i].gridCoordinate.y+m == -1)
+						if(par[i].gridCoordinateY+m == -1)
 							sideUPDOWN = DOWN;
-						if(par[i].gridCoordinate.y+m == params.ncside)
+						if(par[i].gridCoordinateY+m == params.ncside)
 							sideUPDOWN = UP;
 						
-						if(par[i].gridCoordinate.x+j == -1) aux1 = par[i].gridCoordinate.x+j + params.ncside;
-						else if(par[i].gridCoordinate.x+j == params.ncside) aux1 = par[i].gridCoordinate.x+j - params.ncside;
-						else aux1 = par[i].gridCoordinate.x+j;
+						if(par[i].gridCoordinateX+j == -1) aux1 = par[i].gridCoordinateX+j + params.ncside;
+						else if(par[i].gridCoordinateX+j == params.ncside) aux1 = par[i].gridCoordinateX+j - params.ncside;
+						else aux1 = par[i].gridCoordinateX+j;
 						
-						if(par[i].gridCoordinate.y+m == -1) aux2 = par[i].gridCoordinate.y+m + params.ncside;
-						else if(par[i].gridCoordinate.y+m == params.ncside) aux2 = par[i].gridCoordinate.y+m - params.ncside;
-						else aux2 = par[i].gridCoordinate.y+m;
+						if(par[i].gridCoordinateY+m == -1) aux2 = par[i].gridCoordinateY+m + params.ncside;
+						else if(par[i].gridCoordinateY+m == params.ncside) aux2 = par[i].gridCoordinateY+m - params.ncside;
+						else aux2 = par[i].gridCoordinateY+m;
 						
 
 						int aux = 0;
@@ -116,7 +116,8 @@ int main(int argc, char *argv[])
 
 				par[i].pastPositions[k] = par[i].position;
 
-				par[i].gridCoordinate = findPosition(par[i], params.ncside);
+				par[i].gridCoordinateX = par[i].position.x * params.ncside / 1;
+				par[i].gridCoordinateY = par[i].position.y * params.ncside / 1;
 			}
 		}
 	}
@@ -134,8 +135,8 @@ int main(int argc, char *argv[])
 
 	//printGrid(grid, params.ncside);
 
-	printf("%.2Lf %.2Lf\n", par[0].position.x, par[0].position.y);
-	printf("%.2Lf %.2Lf\n", centerOfMass.x, centerOfMass.y);
+	printf("%.2f %.2f\n", par[0].position.x, par[0].position.y);
+	printf("%.2f %.2f\n", centerOfMass.x, centerOfMass.y);
 	
 	/*FILE output for debugging*/
 	/*for (i = 0; i < params.n_part; i++)

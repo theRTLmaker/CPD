@@ -36,7 +36,7 @@ particle_t *handler_input(int argc ,char *argv[], parameters *param) {
 	return par;
 }
 
-particle_t * CreateParticleArray(long long int n_part) {
+particle_t * CreateParticleArray(long long n_part) {
 	particle_t *par = (particle_t*) malloc(n_part*sizeof(particle_t));
 	if(par ==NULL) {
 		printf("ERROR malloc\n");
@@ -52,7 +52,7 @@ grid_t initGrid(grid_t grid, long ncside) {
 		printf("ERROR malloc\n");
 		exit(0);
 	}
-	grid.m = (long double **) malloc(ncside*sizeof(long double *));
+	grid.m = (float **) malloc(ncside*sizeof(float *));
 	if(grid.m ==NULL) {
 		printf("ERROR malloc\n");
 		exit(0);
@@ -68,7 +68,7 @@ grid_t initGrid(grid_t grid, long ncside) {
 			printf("ERROR malloc\n");
 			exit(0);
 		}
-		grid.m[i] = (long double *) malloc(ncside*sizeof(long double));
+		grid.m[i] = (float *) malloc(ncside*sizeof(float));
 		if(grid.m[i] == NULL) {
 			printf("ERROR malloc\n");
 			exit(0);
@@ -106,7 +106,8 @@ void init_particles(long seed, long ncside, long long int n_part, particle_t *pa
 
         par[i].m = RND0_1 * ncside / (G * 1e6 * n_part);
 
-        par[i].gridCoordinate = findPosition(par[i], ncside);
+        par[i].gridCoordinateX = par[i].position.x * ncside / 1;
+        par[i].gridCoordinateY = par[i].position.y * ncside / 1;
 
         par[i].pastPositions = (vector2 *)malloc(1000* sizeof(vector2));
     }

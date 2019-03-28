@@ -15,8 +15,8 @@
 
 
 typedef struct _vector2{
-	long double x;
-	long double y;
+	float x;
+	float y;
 } vector2;
 
 typedef struct _vector2grid{
@@ -25,16 +25,17 @@ typedef struct _vector2grid{
 } vector2grid;
 
 typedef struct _particle_t {
-	long double m;
+	float m;
 	vector2 position;
 	vector2 velocity;
-	vector2grid gridCoordinate;
+	int gridCoordinateX;
+	int gridCoordinateY;
 	vector2 appliedForce;
 	vector2 *pastPositions;
 } particle_t;
 
 typedef struct _grid_t{
-	long double **m;
+	float **m;
 	vector2 **centerOfMass;
 	unsigned char **mask;
 } grid_t;
@@ -48,9 +49,9 @@ typedef struct _grid_t{
 //int constrain(int size, int n);
 vector2 addVectors(vector2 a, vector2 b);
 vector2 subVectors(vector2 a, vector2 b);
-vector2 multiplyVectorByConst(double c, vector2 v);
+vector2 multiplyVectorByConst(float c, vector2 v);
 
-vector2 calculateGravForce(particle_t p1, vector2 massCenter, long double m, int sideUPDOWN, int sideLEFTRIGHT);
+vector2 calculateGravForce(particle_t p1, vector2 massCenter, float m, int sideUPDOWN, int sideLEFTRIGHT);
 
 vector2 calculateNextPosition(particle_t particle); // x = x0 + v0t + 0.5 a t^2 (t = 1)
 

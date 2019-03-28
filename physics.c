@@ -15,14 +15,14 @@ inline vector2 subVectors(vector2 a, vector2 b){
 	return r;
 }
 
-vector2 multiplyVectorByConst(double c, vector2 v){
+vector2 multiplyVectorByConst(float c, vector2 v){
 	vector2 r;
 	r.x = c*v.x;
 	r.y = c*v.y;
 	return r;
 }
 
-vector2 calculateGravForce(particle_t p1, vector2 massCenter, long double m, int sideUPDOWN, int sideLEFTRIGHT){
+vector2 calculateGravForce(particle_t p1, vector2 massCenter, float m, int sideUPDOWN, int sideLEFTRIGHT){
 	double gravForceMag;
 
 	vector2 forceDirection;
