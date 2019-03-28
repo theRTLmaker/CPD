@@ -26,7 +26,8 @@ typedef struct _vector2grid{
 
 typedef struct _particle_t {
 	float m;
-	vector2 position;
+	float positionX;
+	float positionY;
 	vector2 velocity;
 	int gridCoordinateX;
 	int gridCoordinateY;
@@ -40,14 +41,14 @@ typedef struct _grid_t{
 	unsigned char **mask;
 } grid_t;
 
-#define vectorNorm(a) (sqrt(a.x * a.x + a.y * a.y))
+#define vectorNorm(x, y) (sqrt(x * x + y * y))
 #define constrain1(size, n) ((n) == (-1) ? ((n) + (size)) : (n))
 #define constrain2(size, n) ((n) == (size) ? ((n) - (size)) : (n))
 #define SUM_A( x, y )  ((x) == 0 || (y) == 0 ? 0 : ( ( ( (x) * (x) ) / ( ( x ) + ( y ) ) ) * ( y ) ))
-#define compareVectorsGrid(a, b) ((a).x == (b).x && (a).y == (b).y ? 1 : 0)
+#define compareVectorsGrid(ax, ay, bx, by) ((ax) == (bx) && (ay) == (by) ? 1 : 0)
 
 //int constrain(int size, int n);
-vector2 addVectors(vector2 a, vector2 b);
+float addVectors(float a, float b);
 vector2 subVectors(vector2 a, vector2 b);
 vector2 multiplyVectorByConst(float c, vector2 v);
 

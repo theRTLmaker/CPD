@@ -45,19 +45,28 @@ int main(int argc, char *argv[])
 					grid.mask[i][j] = 0;
 				}
 			}
-
+			vector2 auxVec;
+			int x, y;
 			//#pragma omp parallel for reduction(+:grid.m[:params.ncside][:params.ncside])
-			if(tid == 0) {
-				// Calculate center of mass of each grid cell
-				for(int i = 0; i < params.n_part; i++) {
-					grid.centerOfMass[par[i].gridCoordinateX][par[i].gridCoordinateY] = addVectors(multiplyVectorByConst(par[i].m, par[i].position), 
-																									 grid.centerOfMass[par[i].gridCoordinateX][par[i].gridCoordinateY]);
-					grid.m[par[i].gridCoordinateX][par[i].gridCoordinateY] += par[i].m;
+			#pragma omp for 
+			// Calculate center of mass of each grid cell
+			for(int i = 0; i < params.n_part; i++) {
+				x = par[i].gridCoordinateX;
+				y = par[i].gridCoordinateY;
+				auxVec = addVectors(multiplyVectorByConst(par[i].m, par[i].position), grid.centerOfMass[par[i].gridCoordinateX][par[i].gridCoordinateY]);
+				#pragma omp critical (a)
+				{
+					grid.centerOfMass[x][y] = auxVec;
+				}
+				#pragma omp critical (b)
+				{
+					grid.m[x][y] += par[i].m;
 				}
 			}
 			
+			
 
-			#pragma omp barrier	
+			//#pragma omp barrier	
 			
 			// Compute interactions
 			// Run all particles
