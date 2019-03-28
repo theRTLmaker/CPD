@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 #define G 6.67408e-11
-#define EPSLON 0.01
+#define EPSLON 0.0005
 
 #define MIDDLE -1
 #define DOWN 0
