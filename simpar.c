@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include "physics.h"
 #include "init_program.h"
 #include "linkedList.h"
@@ -13,13 +14,12 @@ int main(int argc, char *argv[])
 {
 	//FILE *fp;
 	grid_t grid;
-	vector2 centerOfMass;
 	particle_t *par;
 	parameters params; 
 	int k = 0;
 	int tid;
 
-	omp_set_num_threads(4);
+	omp_set_num_threads(6);
 
 	//fp = fopen("positions.txt", "w");
 	printf("Init particles\n");
@@ -34,39 +34,59 @@ int main(int argc, char *argv[])
 		{
 			// get id of thread
       		tid = omp_get_thread_num();
-			printf("TIME STEP %d\n", k);
+      		if(tid == 0)
+				printf("TIME STEP %d\n", k);
 			#pragma omp for 
 			// Run throw all the cells and computes all the center of mass
-			for (int i = 0; i < params.ncside; ++i) {
-				for (int j = 0; j < params.ncside; ++j) {
-					grid.m[i][j] = 0;
-					grid.centerOfMass[i][j].x = 0;
-					grid.centerOfMass[i][j].y = 0;
-					grid.mask[i][j] = 0;
-				}
+			for (int i = 0; i < params.ncside*params.ncside; ++i) {
+				grid.m[i] = 0;
+				grid.centerOfMassX[i] = 0;
+				grid.centerOfMassY[i] = 0;	
 			}
-			vector2 auxVec;
+			
 			int x, y;
-			//#pragma omp parallel for reduction(+:grid.m[:params.ncside][:params.ncside])
+			double *auxm = grid.m;
+			double *auxCMx = grid.centerOfMassX;
+			double *auxCMy = grid.centerOfMassY;
+			double *auxMend;
+			double *auxCMxEnd;
+			double *auxCMyEnd;
+			double auxMval;
+			double auxCMxVal;
+			double auxCMyVal;
+			//#pragma omp parallel for reduction(+:auxm[:params.ncside * params.ncside], auxCMx[:params.ncside * params.ncside], auxCMy[:params.ncside * params.ncside])
 			#pragma omp for 
 			// Calculate center of mass of each grid cell
 			for(int i = 0; i < params.n_part; i++) {
 				x = par[i].gridCoordinateX;
 				y = par[i].gridCoordinateY;
-				auxVec = addVectors(multiplyVectorByConst(par[i].m, par[i].position), grid.centerOfMass[par[i].gridCoordinateX][par[i].gridCoordinateY]);
-				#pragma omp critical (a)
-				{
-					grid.centerOfMass[x][y] = auxVec;
-				}
-				#pragma omp critical (b)
-				{
-					grid.m[x][y] += par[i].m;
-				}
-			}
-			
-			
+				auxMend = &(auxm[MATRIX(x, y, params.ncside)]);
+				auxCMxEnd = &(auxCMx[MATRIX(x, y, params.ncside)]);
+				auxCMyEnd = &(auxCMy[MATRIX(x, y, params.ncside)]);
+				#pragma omp atomic read 
+				auxMval = *auxMend;
+				#pragma omp atomic read 
+				auxCMxVal = *auxCMxEnd;
+				#pragma omp atomic read 
+				auxCMyVal = *auxCMyEnd;
 
-			//#pragma omp barrier	
+				auxMval += par[i].m;
+				auxCMxVal += par[i].m * par[i].positionX;
+				auxCMyVal += par[i].m * par[i].positionY;
+
+				#pragma omp atomic write 
+				*auxCMxEnd = auxCMxVal;
+				#pragma omp atomic write 
+				*auxCMyEnd = auxCMyVal;
+				#pragma omp atomic write 
+				*auxMend = auxMval;
+			}
+			#pragma omp for 
+			for (int i = 0; i < params.ncside*params.ncside; i++)
+			{
+				grid.centerOfMassX[i] = grid.centerOfMassX[i]/grid.m[i];
+				grid.centerOfMassY[i] = grid.centerOfMassY[i]/grid.m[i];
+			}
 			
 			// Compute interactions
 			// Run all particles
@@ -74,8 +94,8 @@ int main(int argc, char *argv[])
 			for(int i = 0; i < params.n_part; i++){
 
 				//printf("tid %d - PARTICLE %d\n", tid, i);
-				par[i].appliedForce.x = 0;
-				par[i].appliedForce.y = 0;
+				par[i].appliedForceX = 0;
+				par[i].appliedForceY = 0;
 
 				// Run the adjacent grids
 				for(int j = -1; j <= 1; j++) {
@@ -102,50 +122,49 @@ int main(int argc, char *argv[])
 						else if(par[i].gridCoordinateY+m == params.ncside) aux2 = par[i].gridCoordinateY+m - params.ncside;
 						else aux2 = par[i].gridCoordinateY+m;
 						
-
-						int aux = 0;
-						#pragma omp critical 
-						{
-							aux = grid.mask[aux1][aux2];
-							grid.mask[aux1][aux2] = 1;
-						}
-						
-						if(aux == 0) {
-							// calculate the center of mass of each grid cell
-							grid.centerOfMass[aux1][aux2] = multiplyVectorByConst(1/grid.m[aux1][aux2] ,grid.centerOfMass[aux1][aux2]);
-							
-						}
-						
-						par[i].appliedForce = addVectors(par[i].appliedForce, calculateGravForce(par[i], grid.centerOfMass[ aux1 ][ aux2 ], grid.m[ aux1 ][ aux2 ], sideUPDOWN, sideLEFTRIGHT)); //for each adjacent cell.---- 
+						calculateGravForce(&(par[i]), grid.centerOfMassX[MATRIX(aux1, aux2, params.ncside) ], 
+													grid.centerOfMassY[ MATRIX(aux1, aux2, params.ncside) ], 
+													grid.m[ MATRIX(aux1, aux2, params.ncside) ], sideUPDOWN, sideLEFTRIGHT); //for each adjacent cell.---- 
 					}
 				}
 				// Updates particles position and velocity and position on the grid
-				par[i].velocity = calculateNextVelocity(par[i]);
-				par[i].position = calculateNextPosition(par[i]);
+				par[i].vx += par[i].appliedForceX/par[i].m; //a = F/m 
+				par[i].vy += par[i].appliedForceY/par[i].m;
 
-				par[i].pastPositions[k] = par[i].position;
+				par[i].positionX += par[i].vx + 0.5 * par[i].appliedForceX/par[i].m;//x = x0 + v0t + 0.5 a t^2 (t = 1)
+				par[i].positionY += par[i].vy + 0.5 * par[i].appliedForceY/par[i].m;
 
-				par[i].gridCoordinateX = par[i].position.x * params.ncside / 1;
-				par[i].gridCoordinateY = par[i].position.y * params.ncside / 1;
+				//See if its out of bounds
+				if(par[i].positionX >= 1) par[i].positionX = par[i].positionX - floor(par[i].positionX);
+				else if(par[i].positionX < 0) par[i].positionX = 1 + (par[i].positionX - ceil(par[i].positionX)); 
+
+				if(par[i].positionY >= 1) par[i].positionY = par[i].positionY - floor(par[i].positionY);
+				else if(par[i].positionY < 0) par[i].positionY = 1 + (par[i].positionY - ceil(par[i].positionY));
+
+
+				par[i].gridCoordinateX = par[i].positionX * params.ncside / 1;
+				par[i].gridCoordinateY = par[i].positionY * params.ncside / 1;
 			}
 		}
 	}
 	
 
-	centerOfMass.x = 0;
-	centerOfMass.y = 0;
-	long double totalMass = 0;
+	double centerOfMassX = 0;
+	double centerOfMassY = 0;
+	double totalMass = 0;
 	for(int i = 0; i < params.n_part; i++) {
-		centerOfMass = addVectors(centerOfMass, multiplyVectorByConst(par[i].m, par[i].position));
+		centerOfMassX += par[i].m * par[i].positionX;
+		centerOfMassY += par[i].m * par[i].positionY;
 		totalMass += par[i].m;
 	}
-	centerOfMass = multiplyVectorByConst(1/totalMass, centerOfMass);
+	centerOfMassX /= totalMass;
+	centerOfMassY /= totalMass;
 
 
 	//printGrid(grid, params.ncside);
 
-	printf("%.2f %.2f\n", par[0].position.x, par[0].position.y);
-	printf("%.2f %.2f\n", centerOfMass.x, centerOfMass.y);
+	printf("%.2f %.2f\n", par[0].positionX, par[0].positionY);
+	printf("%.2f %.2f\n", centerOfMassX, centerOfMassY);
 	
 	/*FILE output for debugging*/
 	/*for (i = 0; i < params.n_part; i++)

@@ -2,7 +2,7 @@
 #include "physics.h"
 #include "debug.h"
 
-void printVectorPosition(vector2 p){
+/*void printVectorPosition(vector2 p){
 	printf("	Position - ( %f , %f )\n", p.x, p.y);
 }
 
@@ -12,15 +12,13 @@ void printVectorVelocity(vector2 v) {
 
 void printVectorGrid(vector2grid g) {
 	printf("	Grid - ( %d , %d )\n",g.x, g.y);
-}
-
-
+}*/
 
 void printParticle(particle_t p) {
-	printVectorPosition(p.position);
-	printVectorVelocity(p.velocity);
 	//printVectorGrid(p.gridCoordinate);
-	printf("	Force - ( %f , %f )\n", p.appliedForce.x, p.appliedForce.y);
+	printf("	Position - ( %f , %f )\n", p.positionX, p.positionY);
+	printf("	Velocity - ( %f , %f )\n", p.vx, p.vy);
+	printf("	Force - ( %f , %f )\n", p.appliedForceX, p.appliedForceY);
 	printf("	mass: %f\n", p.m);
 }
 
@@ -36,7 +34,7 @@ void printAllParticles(particle_t *p, long long int nr_part) {
 
 void printCenter(particle_t p) {
 	printf("Center of Mass\n");
-	printVectorPosition(p.position);
-	printVectorVelocity(p.velocity);
+	printf("	Position - ( %f , %f )\n", p.positionX, p.positionY);
+	printf("	Velocity - ( %f , %f )\n", p.vx, p.vy);
 	printf("	mass: %f\n", p.m);
 }

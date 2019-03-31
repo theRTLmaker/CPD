@@ -13,6 +13,7 @@
 #define LEFT 2
 #define RIGHT 3
 
+#define MATRIX(x, y, n) (x*n + y)
 
 typedef struct _vector2{
 	float x;
@@ -26,19 +27,20 @@ typedef struct _vector2grid{
 
 typedef struct _particle_t {
 	float m;
-	float positionX;
-	float positionY;
-	vector2 velocity;
+	double positionX;
+	double positionY;
+	double vx;
+	double vy;
 	int gridCoordinateX;
 	int gridCoordinateY;
-	vector2 appliedForce;
-	vector2 *pastPositions;
+	double appliedForceX;
+	double appliedForceY;
 } particle_t;
 
 typedef struct _grid_t{
-	float **m;
-	vector2 **centerOfMass;
-	unsigned char **mask;
+	double *m;
+	double *centerOfMassX;
+	double *centerOfMassY;
 } grid_t;
 
 #define vectorNorm(x, y) (sqrt(x * x + y * y))
@@ -47,16 +49,15 @@ typedef struct _grid_t{
 #define SUM_A( x, y )  ((x) == 0 || (y) == 0 ? 0 : ( ( ( (x) * (x) ) / ( ( x ) + ( y ) ) ) * ( y ) ))
 #define compareVectorsGrid(ax, ay, bx, by) ((ax) == (bx) && (ay) == (by) ? 1 : 0)
 
+
 //int constrain(int size, int n);
-float addVectors(float a, float b);
+/*float addVectors(float a, float b);
 vector2 subVectors(vector2 a, vector2 b);
 vector2 multiplyVectorByConst(float c, vector2 v);
 
-vector2 calculateGravForce(particle_t p1, vector2 massCenter, float m, int sideUPDOWN, int sideLEFTRIGHT);
-
 vector2 calculateNextPosition(particle_t particle); // x = x0 + v0t + 0.5 a t^2 (t = 1)
 
-vector2 calculateNextVelocity(particle_t particle); // v = v0 + at (t = 1)
-
+vector2 calculateNextVelocity(particle_t particle); // v = v0 + at (t = 1)*/
+void calculateGravForce(particle_t *p1, double massCenterX, double massCenterY, float m, int sideUPDOWN, int sideLEFTRIGHT);
 
 #endif
