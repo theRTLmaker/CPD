@@ -1,3 +1,10 @@
+#ifdef _POMP
+#  undef _POMP
+#endif
+#define _POMP 200110
+
+#include "init_program.c.opari.inc"
+#line 1 "init_program.c"
 #include "init_program.h"
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,3 +1,10 @@
+#ifdef _POMP
+#  undef _POMP
+#endif
+#define _POMP 200110
+
+#include "simpar.c.opari.inc"
+#line 1 "simpar.c"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -30,20 +37,31 @@ int main(int argc, char *argv[])
 	printf("Start Simulation\n");
 	// Time Step simulation
 	for (k = 0; k < params.timeStep; k++) {
-		#pragma omp parallel private(tid)
+POMP_Parallel_fork(&omp_rd_15);
+#line 33 "simpar.c"
+		#pragma omp parallel private(tid) POMP_DLIST_00015
+{ POMP_Parallel_begin(&omp_rd_15);
+#line 34 "simpar.c"
 		{
-			// get id of thread
-      		tid = omp_get_thread_num();
+			tid = omp_get_thread_num();
       		if(tid == 0)
 				printf("TIME STEP %d\n", k);
 
-			#pragma omp for 
+POMP_For_enter(&omp_rd_16);
+#line 39 "simpar.c"
+			#pragma omp for  nowait
 			// Run throw all the cells and resets all the center of mass
 			for (int i = 0; i < params.ncside*params.ncside; ++i) {
 				grid.m[i] = 0;
 				grid.centerOfMassX[i] = 0;
 				grid.centerOfMassY[i] = 0;	
 			}
+POMP_Barrier_enter(&omp_rd_16);
+#pragma omp barrier
+POMP_Barrier_exit(&omp_rd_16);
+POMP_For_exit(&omp_rd_16);
+#line 45 "simpar.c"
+    
 			
 			int x, y;
 			double *auxm = grid.m;
@@ -52,7 +70,9 @@ int main(int argc, char *argv[])
 			double *auxMend, *auxCMxEnd, *auxCMyEnd;
 			double auxMval, auxCMxVal, auxCMyVal;
 			//#pragma omp parallel for reduction(+:auxm[:params.ncside * params.ncside], auxCMx[:params.ncside * params.ncside], auxCMy[:params.ncside * params.ncside])
-			#pragma omp for 
+POMP_For_enter(&omp_rd_17);
+#line 54 "simpar.c"
+			#pragma omp for  nowait
 			// Calculate center of mass of each grid cell
 			for(int i = 0; i < params.n_part; i++) {
 				x = par[i].gridCoordinateX;
@@ -61,35 +81,81 @@ int main(int argc, char *argv[])
 				auxCMxEnd = &(auxCMx[MATRIX(x, y, params.ncside)]);
 				auxCMyEnd = &(auxCMy[MATRIX(x, y, params.ncside)]);
 
+POMP_Atomic_enter(&omp_rd_18);
+#line 63 "simpar.c"
 				#pragma omp atomic read 
 				auxMval = *auxMend;
+POMP_Atomic_exit(&omp_rd_18);
+#line 65 "simpar.c"
+                       
+POMP_Atomic_enter(&omp_rd_19);
+#line 65 "simpar.c"
 				#pragma omp atomic read 
 				auxCMxVal = *auxCMxEnd;
+POMP_Atomic_exit(&omp_rd_19);
+#line 67 "simpar.c"
+                           
+POMP_Atomic_enter(&omp_rd_20);
+#line 67 "simpar.c"
 				#pragma omp atomic read 
 				auxCMyVal = *auxCMyEnd;
+POMP_Atomic_exit(&omp_rd_20);
+#line 69 "simpar.c"
+                           
 
 				auxMval += par[i].m;
 				auxCMxVal += par[i].m * par[i].positionX;
 				auxCMyVal += par[i].m * par[i].positionY;
 
+POMP_Atomic_enter(&omp_rd_21);
+#line 74 "simpar.c"
 				#pragma omp atomic write 
 				*auxCMxEnd = auxCMxVal;
+POMP_Atomic_exit(&omp_rd_21);
+#line 76 "simpar.c"
+                           
+POMP_Atomic_enter(&omp_rd_22);
+#line 76 "simpar.c"
 				#pragma omp atomic write 
 				*auxCMyEnd = auxCMyVal;
+POMP_Atomic_exit(&omp_rd_22);
+#line 78 "simpar.c"
+                           
+POMP_Atomic_enter(&omp_rd_23);
+#line 78 "simpar.c"
 				#pragma omp atomic write 
 				*auxMend = auxMval;
+POMP_Atomic_exit(&omp_rd_23);
+#line 80 "simpar.c"
+                       
 			}
+POMP_Barrier_enter(&omp_rd_17);
+#pragma omp barrier
+POMP_Barrier_exit(&omp_rd_17);
+POMP_For_exit(&omp_rd_17);
+#line 80 "simpar.c"
+    
 
-			#pragma omp for 
+POMP_For_enter(&omp_rd_24);
+#line 82 "simpar.c"
+			#pragma omp for  nowait
 			for (int i = 0; i < params.ncside*params.ncside; i++)
 			{
 				grid.centerOfMassX[i] = grid.centerOfMassX[i]/grid.m[i];
 				grid.centerOfMassY[i] = grid.centerOfMassY[i]/grid.m[i];
 			}
+POMP_Barrier_enter(&omp_rd_24);
+#pragma omp barrier
+POMP_Barrier_exit(&omp_rd_24);
+POMP_For_exit(&omp_rd_24);
+#line 87 "simpar.c"
+    
 			
 			// Compute interactions
 			// Run all particles
-			#pragma omp for 
+POMP_For_enter(&omp_rd_25);
+#line 91 "simpar.c"
+			#pragma omp for  nowait
 			for(int i = 0; i < params.n_part; i++){
 
 				//printf("tid %d - PARTICLE %d\n", tid, i);
@@ -144,30 +210,79 @@ int main(int argc, char *argv[])
 				par[i].gridCoordinateX = par[i].positionX * params.ncside / 1;
 				par[i].gridCoordinateY = par[i].positionY * params.ncside / 1;
 			}
+POMP_Barrier_enter(&omp_rd_25);
+#pragma omp barrier
+POMP_Barrier_exit(&omp_rd_25);
+POMP_For_exit(&omp_rd_25);
+#line 145 "simpar.c"
+    
 		}
+POMP_Barrier_enter(&omp_rd_15);
+#pragma omp barrier
+POMP_Barrier_exit(&omp_rd_15);
+POMP_Parallel_end(&omp_rd_15); }
+POMP_Parallel_join(&omp_rd_15);
+#line 146 "simpar.c"
+   
 	}
 	
-	#pragma omp parallel 
+POMP_Parallel_fork(&omp_rd_26);
+#line 149 "simpar.c"
+	#pragma omp parallel  POMP_DLIST_00026
+{ POMP_Parallel_begin(&omp_rd_26);
+#line 150 "simpar.c"
 	{
 		double centerOfMassX = 0;
 		double centerOfMassY = 0;
 		double totalMass = 0;
 
-		#pragma omp parallel for reduction(+:centerOfMassX, centerOfMassY, totalMass)
+POMP_Parallel_fork(&omp_rd_27);
+#line 155 "simpar.c"
+		#pragma omp parallel     reduction(+:centerOfMassX, centerOfMassY, totalMass)
+{ POMP_Parallel_begin(&omp_rd_27);
+POMP_For_enter(&omp_rd_27);
+#line 155 "simpar.c"
+  #pragma omp          for                                                       nowait
 		for(int i = 0; i < params.n_part; i++) {
 			centerOfMassX += par[i].m * par[i].positionX;
 			centerOfMassY += par[i].m * par[i].positionY;
 			totalMass += par[i].m;
 		}
+POMP_Barrier_enter(&omp_rd_27);
+#pragma omp barrier
+POMP_Barrier_exit(&omp_rd_27);
+POMP_For_exit(&omp_rd_27);
+POMP_Parallel_end(&omp_rd_27); }
+POMP_Parallel_join(&omp_rd_27);
+#line 160 "simpar.c"
+   
 
-		#pragma omp single 
+POMP_Single_enter(&omp_rd_28);
+#line 162 "simpar.c"
+		#pragma omp single  nowait
+{ POMP_Single_begin(&omp_rd_28);
+#line 163 "simpar.c"
 		{
 			centerOfMassX /= totalMass;
 			centerOfMassY /= totalMass;
 			printf("%.2f %.2f\n", par[0].positionX, par[0].positionY);
 			printf("%.2f %.2f\n", centerOfMassX, centerOfMassY);
 		}
+POMP_Single_end(&omp_rd_28); }
+POMP_Barrier_enter(&omp_rd_28);
+#pragma omp barrier
+POMP_Barrier_exit(&omp_rd_28);
+POMP_Single_exit(&omp_rd_28);
+#line 168 "simpar.c"
+   
 	}
+POMP_Barrier_enter(&omp_rd_26);
+#pragma omp barrier
+POMP_Barrier_exit(&omp_rd_26);
+POMP_Parallel_end(&omp_rd_26); }
+POMP_Parallel_join(&omp_rd_26);
+#line 169 "simpar.c"
+  
 	
 
 
