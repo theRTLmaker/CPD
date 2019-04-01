@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 #include "physics.h"
 #include "init_program.h"
 #include "linkedList.h"
@@ -37,13 +38,15 @@ int main(int argc, char *argv[])
       		if(tid == 0)
 				printf("TIME STEP %d\n", k);
 
-			#pragma omp for 
-			// Run throw all the cells and resets all the center of mass
-			for (int i = 0; i < params.ncside*params.ncside; ++i) {
-				grid.m[i] = 0;
-				grid.centerOfMassX[i] = 0;
-				grid.centerOfMassY[i] = 0;	
+			#pragma omp single 
+			{
+				// Run throw all the cells and resets all the center of mass
+				memset(grid.m, 0, params.ncside*params.ncside*sizeof(double));
+				memset(grid.centerOfMassX, 0, params.ncside*params.ncside*sizeof(double));
+				memset(grid.centerOfMassY, 0, params.ncside*params.ncside*sizeof(double));
 			}
+
+			#pragma omp barrier
 			
 			int x, y;
 			double *auxm = grid.m;
