@@ -64,23 +64,16 @@ int main(int argc, char *argv[])
 				auxCMxEnd = &(auxCMx[MATRIX(x, y, params.ncside)]);
 				auxCMyEnd = &(auxCMy[MATRIX(x, y, params.ncside)]);
 
-				#pragma omp atomic read 
-				auxMval = *auxMend;
-				#pragma omp atomic read 
-				auxCMxVal = *auxCMxEnd;
-				#pragma omp atomic read 
-				auxCMyVal = *auxCMyEnd;
+				auxMval = par[i].m;
+				auxCMxVal = par[i].m * par[i].positionX;
+				auxCMyVal = par[i].m * par[i].positionY;
 
-				auxMval += par[i].m;
-				auxCMxVal += par[i].m * par[i].positionX;
-				auxCMyVal += par[i].m * par[i].positionY;
-
-				#pragma omp atomic write 
-				*auxCMxEnd = auxCMxVal;
-				#pragma omp atomic write 
-				*auxCMyEnd = auxCMyVal;
-				#pragma omp atomic write 
-				*auxMend = auxMval;
+				#pragma omp atomic  
+				*auxCMxEnd += auxCMxVal;
+				#pragma omp atomic  
+				*auxCMyEnd += auxCMyVal;
+				#pragma omp atomic  
+				*auxMend += auxMval;
 			}
 
 			#pragma omp for 
@@ -171,24 +164,6 @@ int main(int argc, char *argv[])
 			printf("%.2f %.2f\n", centerOfMassX, centerOfMassY);
 		}
 	}
-	
-
-
-	//printGrid(grid, params.ncside);
-
-	
-	/*FILE output for debugging*/
-	/*for (i = 0; i < params.n_part; i++)
-	{
-		for ( j = 0; j < params.timeStep; j++)
-		{
-			fprintf(fp, "%Lf,%Lf\r\n", par[i].pastPositions[j].x, par[i].pastPositions[j].y);
-		}
-		printf("----\n");
-		free(par[i].pastPositions);
-	}
-	fclose(fp);*/
-	/*FILE output for debugging*/
 
 	freeEverything(par, grid, params.ncside);
 	return 0;
