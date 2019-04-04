@@ -13,50 +13,35 @@
 
 int main(int argc, char *argv[])
 {
-	//FILE *fp;
 	grid_t grid;
 	particle_t *par;
 	parameters params; 
 	int k = 0;
-	int tid;
 
-	omp_set_num_threads(atoi(argv[5]));
-
-	//fp = fopen("positions.txt", "w");
-	printf("Init particles\n");
+	// init particles
 	par = handler_input(argc, argv, &params);
-	printf("Particles initiated\n");
+
 	// Init Grid
 	grid = initGrid(grid, params.ncside);
-	printf("Start Simulation\n");
+
 	// Time Step simulation
 	for (k = 0; k < params.timeStep; k++) {
-		#pragma omp parallel private(tid)
-		{
-			// get id of thread
-      		tid = omp_get_thread_num();
-      		if(tid == 0)
-				printf("TIME STEP %d\n", k);
-
-			#pragma omp single 
-			{
-				// Run throw all the cells and resets all the center of mass
-				memset(grid.m, 0, params.ncside*params.ncside*sizeof(double));
-				memset(grid.centerOfMassX, 0, params.ncside*params.ncside*sizeof(double));
-				memset(grid.centerOfMassY, 0, params.ncside*params.ncside*sizeof(double));
-			}
-
-			#pragma omp barrier
+			// Run throw all the cells and resets all the center of mass
+			memset(grid.m, 0, params.ncside*params.ncside*sizeof(double));
+			memset(grid.centerOfMassX, 0, params.ncside*params.ncside*sizeof(double));
+			memset(grid.centerOfMassY, 0, params.ncside*params.ncside*sizeof(double));
 			
+		#pragma omp parallel
+		{
 			int x, y;
 			double *auxm = grid.m;
 			double *auxCMx = grid.centerOfMassX;
 			double *auxCMy = grid.centerOfMassY;
 			double *auxMend, *auxCMxEnd, *auxCMyEnd;
 			double auxMval, auxCMxVal, auxCMyVal;
-			//#pragma omp parallel for reduction(+:auxm[:params.ncside * params.ncside], auxCMx[:params.ncside * params.ncside], auxCMy[:params.ncside * params.ncside])
-			#pragma omp for 
+			
 			// Calculate center of mass of each grid cell
+			#pragma omp for 
 			for(int i = 0; i < params.n_part; i++) {
 				x = par[i].gridCoordinateX;
 				y = par[i].gridCoordinateY;
@@ -136,7 +121,7 @@ int main(int argc, char *argv[])
 				if(par[i].positionY >= 1) par[i].positionY = par[i].positionY - floor(par[i].positionY);
 				else if(par[i].positionY < 0) par[i].positionY = 1 + (par[i].positionY - ceil(par[i].positionY));
 
-
+				// Updates the position of the particle on the grid of cells
 				par[i].gridCoordinateX = par[i].positionX * params.ncside / 1;
 				par[i].gridCoordinateY = par[i].positionY * params.ncside / 1;
 			}
@@ -149,6 +134,7 @@ int main(int argc, char *argv[])
 		double centerOfMassY = 0;
 		double totalMass = 0;
 
+		// Calculates the center of mass of all cells
 		#pragma omp parallel for reduction(+:centerOfMassX, centerOfMassY, totalMass)
 		for(int i = 0; i < params.n_part; i++) {
 			centerOfMassX += par[i].m * par[i].positionX;
@@ -156,6 +142,7 @@ int main(int argc, char *argv[])
 			totalMass += par[i].m;
 		}
 
+		// prints the information
 		#pragma omp single 
 		{
 			centerOfMassX /= totalMass;
