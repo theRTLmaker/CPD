@@ -10,7 +10,7 @@ particle_t *handler_input(int argc ,char *argv[], parameters *param) {
 	particle_t *par;
 	long seed = 0;
 
-	if(argc != 5){
+	if(argc < 5){
 		printf("Wrong number of input parameteres\n");
 		exit(0);
 	}
@@ -36,7 +36,7 @@ particle_t *handler_input(int argc ,char *argv[], parameters *param) {
 	return par;
 }
 
-particle_t * CreateParticleArray(long long int n_part) {
+particle_t * CreateParticleArray(long long n_part) {
 	particle_t *par = (particle_t*) malloc(n_part*sizeof(particle_t));
 	if(par ==NULL) {
 		printf("ERROR malloc\n");
@@ -47,50 +47,25 @@ particle_t * CreateParticleArray(long long int n_part) {
 }
 
 grid_t initGrid(grid_t grid, long ncside) {
-	grid.centerOfMass = (vector2**) malloc(ncside*sizeof(vector2 *));
-	if(grid.centerOfMass ==NULL) {
+	grid.centerOfMassX = (double*) malloc(ncside*ncside*sizeof(double ));
+	if(grid.centerOfMassX ==NULL) {
 		printf("ERROR malloc\n");
 		exit(0);
 	}
-	grid.m = (long double **) malloc(ncside*sizeof(long double *));
+	grid.centerOfMassY = (double*) malloc(ncside*ncside*sizeof(double ));
+	if(grid.centerOfMassY ==NULL) {
+		printf("ERROR malloc\n");
+		exit(0);
+	}
+
+	grid.m = (double *) malloc(ncside*ncside*sizeof(double ));
 	if(grid.m ==NULL) {
 		printf("ERROR malloc\n");
 		exit(0);
 	}
-	grid.mask = (unsigned char **) malloc(ncside*sizeof(unsigned char *));
-	if(grid.mask ==NULL) {
-		printf("ERROR malloc\n");
-		exit(0);
-	}
-	for(int i = 0; i < ncside; i++) {
-		grid.centerOfMass[i] = (vector2 *) malloc(ncside*sizeof(vector2));
-		if(grid.centerOfMass[i] == NULL) {
-			printf("ERROR malloc\n");
-			exit(0);
-		}
-		grid.m[i] = (long double *) malloc(ncside*sizeof(long double));
-		if(grid.m[i] == NULL) {
-			printf("ERROR malloc\n");
-			exit(0);
-		}
-		grid.mask[i] = (unsigned char  *) malloc(ncside * sizeof(unsigned char));
-		if(grid.mask[i] ==NULL) {
-			printf("ERROR malloc\n");
-			exit(0);
-		}
-	}
 	
 	return grid;
 }
-
-vector2grid findPosition(particle_t par, long ncside) {
-	vector2grid vector;
-	vector.x = par.position.x * ncside / 1;
-	vector.y = par.position.y * ncside / 1;
-
-	return vector;
-}
-
 
 void init_particles(long seed, long ncside, long long int n_part, particle_t *par) {
     long long i;
@@ -98,31 +73,26 @@ void init_particles(long seed, long ncside, long long int n_part, particle_t *pa
     srandom(seed);
 
     for(i = 0; i < n_part; i++) {        
-		par[i].position.x = RND0_1;
-        par[i].position.y = RND0_1;
+		par[i].positionX = RND0_1;
+        par[i].positionY = RND0_1;
         
-        par[i].velocity.x = RND0_1 / ncside / 10.0;
-        par[i].velocity.y = RND0_1 / ncside / 10.0;
+        par[i].vx = RND0_1 / ncside / 10.0;
+        par[i].vy = RND0_1 / ncside / 10.0;
 
         par[i].m = RND0_1 * ncside / (G * 1e6 * n_part);
 
-        par[i].gridCoordinate = findPosition(par[i], ncside);
+        par[i].gridCoordinateX = par[i].positionX * ncside / 1;
+        par[i].gridCoordinateY = par[i].positionY * ncside / 1;
 
-        par[i].pastPositions = (vector2 *)malloc(1000* sizeof(vector2));
     }
 }
 
 
-void freeEverything(particle_t *par, grid_t particleGrid, long long int nside){
+void freeEverything(particle_t *par, grid_t particleGrid, long long nside){
 	free(par);
 
-	for(int i = 0; i < nside; i++) {
-			free(particleGrid.m[i]);
-			free(particleGrid.centerOfMass[i]);
-	}
-
 	free(particleGrid.m);
-	free(particleGrid.centerOfMass);
-
+	free(particleGrid.centerOfMassX);
+	free(particleGrid.centerOfMassY);
 	return;
 }

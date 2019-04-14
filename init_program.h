@@ -16,7 +16,7 @@ vector2grid findPosition(particle_t par, long ncside);
 
 void init_particles(long seed, long ncside, long long n_part, particle_t *par);
 
-particle_t * CreateParticleArray(long long int n_part);
+particle_t * CreateParticleArray(long long n_part);
 
 grid_t initGrid(grid_t grid, long ncside);
 

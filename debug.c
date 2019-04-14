@@ -2,26 +2,24 @@
 #include "physics.h"
 #include "debug.h"
 
-void printVectorPosition(vector2 p){
-	printf("	Position - ( %Lf , %Lf )\n", p.x, p.y);
+/*void printVectorPosition(vector2 p){
+	printf("	Position - ( %f , %f )\n", p.x, p.y);
 }
 
 void printVectorVelocity(vector2 v) {
-	printf("	Velocity - ( %Lf , %Lf )\n",v.x, v.y);
+	printf("	Velocity - ( %f , %f )\n",v.x, v.y);
 }
 
 void printVectorGrid(vector2grid g) {
 	printf("	Grid - ( %d , %d )\n",g.x, g.y);
-}
-
-
+}*/
 
 void printParticle(particle_t p) {
-	printVectorPosition(p.position);
-	printVectorVelocity(p.velocity);
-	printVectorGrid(p.gridCoordinate);
-	printf("	Force - ( %Lf , %Lf )\n", p.appliedForce.x, p.appliedForce.y);
-	printf("	mass: %Lf\n", p.m);
+	//printVectorGrid(p.gridCoordinate);
+	printf("	Position - ( %f , %f )\n", p.positionX, p.positionY);
+	printf("	Velocity - ( %f , %f )\n", p.vx, p.vy);
+	printf("	Force - ( %f , %f )\n", p.appliedForceX, p.appliedForceY);
+	printf("	mass: %f\n", p.m);
 }
 
 void printAllParticles(particle_t *p, long long int nr_part) {
@@ -36,7 +34,7 @@ void printAllParticles(particle_t *p, long long int nr_part) {
 
 void printCenter(particle_t p) {
 	printf("Center of Mass\n");
-	printVectorPosition(p.position);
-	printVectorVelocity(p.velocity);
-	printf("	mass: %Lf\n", p.m);
+	printf("	Position - ( %f , %f )\n", p.positionX, p.positionY);
+	printf("	Velocity - ( %f , %f )\n", p.vx, p.vy);
+	printf("	mass: %f\n", p.m);
 }
