@@ -32,8 +32,8 @@ typedef struct _particle_t {
 	double positionY;
 	double vx;
 	double vy;
-	int gridCoordinateX;
-	int gridCoordinateY;
+	long gridCoordinateX;
+	long gridCoordinateY;
 	double appliedForceX;
 	double appliedForceY;
 } particle_t;

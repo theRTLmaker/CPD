@@ -10,7 +10,6 @@
 parameters handler_input(int argc ,char *argv[]) 
 {
 	parameters params;
-	long seed = 0;
 
 	if(argc < 5){
 		printf("Wrong number of input parameteres\n");
