@@ -7,7 +7,9 @@
 typedef struct _parameters{
 	long seed;
 	long ncside;
+	long long gridSize;
 	long long n_part;
+	long long partialNrPart;
 	long timeStep;
 	long xSize;
 	long ySize;
@@ -28,7 +30,7 @@ void findGridDivision(parameters *params, int numberOfProcess);
 
 grid_t initTotalGrid(grid_t grid, long ncside);
 
-grid_t initPartialGrid(int numberOfProcess, int processID, grid_t grid, long ncside);
+grid_t initPartialGrid(int numberOfProcess, int processID, grid_t grid, parameters *params);
 
 void freeEverything(particle_t *par, grid_t particleGrid, long long int nside);
 

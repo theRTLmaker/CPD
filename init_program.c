@@ -78,7 +78,7 @@ void computeGridPosition(parameters params, particle_t *par) {
 
 void findGridDivision(parameters *params, int numberOfProcess) {
 	long aux;
-	if(sqrt(numberOfProcess) % 1.0 == 0) {
+	if(fmod(sqrt(numberOfProcess), 1.0) == 0) {
 		params->xSize = sqrt(numberOfProcess);
 		params->ySize = sqrt(numberOfProcess);
 	}
@@ -95,24 +95,24 @@ void findGridDivision(parameters *params, int numberOfProcess) {
 			}
 			aux = params->xSize * params->ySize;
 
-		}while (aux != numberOfProcess)
+		}while (aux != numberOfProcess);
 	}
-	printf("nr proc: %d, x %ld, y %ld\n, x*y %ld", numberOfProcess, params->xSize, params->ySize, aux);
+	printf("nr proc: %d, x: %ld, y: %ld, x*y = %ld\n", numberOfProcess, params->xSize, params->ySize, aux);
 }
 
 grid_t initTotalGrid(grid_t grid, long ncside) {
-	grid.centerOfMassX = (double*) malloc(ncside*ncside*sizeof(double ));
+	grid.centerOfMassX = (double*) malloc(ncside*ncside*sizeof(double));
 	if(grid.centerOfMassX ==NULL) {
 		printf("ERROR malloc\n");
 		exit(0);
 	}
-	grid.centerOfMassY = (double*) malloc(ncside*ncside*sizeof(double ));
+	grid.centerOfMassY = (double*) malloc(ncside*ncside*sizeof(double));
 	if(grid.centerOfMassY ==NULL) {
 		printf("ERROR malloc\n");
 		exit(0);
 	}
 
-	grid.m = (double *) malloc(ncside*ncside*sizeof(double ));
+	grid.m = (double *) malloc(ncside*ncside*sizeof(double));
 	if(grid.m ==NULL) {
 		printf("ERROR malloc\n");
 		exit(0);
@@ -121,19 +121,42 @@ grid_t initTotalGrid(grid_t grid, long ncside) {
 	return grid;
 }
 
-grid_t initPartialGrid(int numberOfProcess, int processID, grid_t grid, long ncside) {
-	grid.centerOfMassX = (double*) malloc(ncside*ncside*sizeof(double ));
+grid_t initPartialGrid(int numberOfProcess, int processID, grid_t grid, parameters *params) {
+	// Divisão em linhas pelos processos
+	if(params->xSize == 1) {
+		if(processID == numberOfProcess - 1)
+			params->gridSize = params->ncside*(params->ncside/numberOfProcess + params->ncside%numberOfProcess);
+		else
+			params->gridSize = params->ncside*params->ncside/numberOfProcess;
+	}
+	// Divisao em grelha pelos processos
+	else {
+		if(processID % params->xSize == params->xSize - 1) {
+			if(processID % params->ySize == params->ySize - 1) 
+				params->gridSize = ((params->ncside/params->xSize) + (params->ncside%params->xSize)) * ((params->ncside/params->ySize) + (params->ncside%params->ySize));
+			else
+				params->gridSize = ((params->ncside/params->xSize) + (params->ncside%params->xSize)) * (params->ncside/params->ySize);
+		}
+		else{
+			if(processID % params->ySize == params->ySize - 1) 
+				params->gridSize = (params->ncside/params->xSize) * ((params->ncside/params->ySize) + (params->ncside%params->ySize));
+			else
+				params->gridSize = (params->ncside/params->xSize)*(params->ncside/params->ySize);
+		}
+	}
+
+	grid.centerOfMassX = (double*) malloc(params->gridSize*sizeof(double));
 	if(grid.centerOfMassX ==NULL) {
 		printf("ERROR malloc\n");
 		exit(0);
 	}
-	grid.centerOfMassY = (double*) malloc(ncside*ncside*sizeof(double ));
+	grid.centerOfMassY = (double*) malloc(params->gridSize*sizeof(double));
 	if(grid.centerOfMassY ==NULL) {
 		printf("ERROR malloc\n");
 		exit(0);
 	}
 
-	grid.m = (double *) malloc(ncside*ncside*sizeof(double ));
+	grid.m = (double *) malloc(params->gridSize*sizeof(double));
 	if(grid.m ==NULL) {
 		printf("ERROR malloc\n");
 		exit(0);
