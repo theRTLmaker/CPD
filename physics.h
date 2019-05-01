@@ -7,11 +7,11 @@
 #define G 6.67408e-11
 #define EPSLON 0.0005
 
-#define MIDDLE -1
-#define DOWN 0
+#define MIDDLE 0
+#define DOWN -1
 #define UP 1
-#define LEFT 2
-#define RIGHT 3
+#define LEFT -1
+#define RIGHT 1
 
 #define MATRIX(x, y, n) (x*n + y)
 
@@ -26,6 +26,7 @@ typedef struct _vector2grid{
 } vector2grid;
 
 typedef struct _particle_t {
+	int active;
 	float m;
 	double positionX;
 	double positionY;
