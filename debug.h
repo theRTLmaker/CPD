@@ -7,7 +7,7 @@ void printVectorGrid(vector2grid g);
 
 void printParticle(particle_t p);
 
-void printAllParticles(particle_t *p, long long int nr_part);
+void printAllParticles(particle_t *p, long long nr_part);
 
 void printCenter(particle_t p);
 

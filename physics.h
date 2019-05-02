@@ -14,6 +14,9 @@
 #define RIGHT 1
 
 #define MATRIX(x, y, n) (x*n + y)
+#define CENTEROFMASSX(x, y) (grid.centerOfMassX[x*params.ncside + y])
+#define CENTEROFMASSY(x, y) (grid.centerOfMassY[x*params.ncside + y])
+#define MASS(x, y) (grid.m[x*params.ncside + y])
 
 typedef struct _vector2{
 	float x;
@@ -43,6 +46,12 @@ typedef struct _grid_t{
 	double *centerOfMassX;
 	double *centerOfMassY;
 } grid_t;
+
+typedef struct _grid_tt{
+	double m;
+	double centerOfMassX;
+	double centerOfMassY;
+} grid_tt;
 
 #define vectorNorm(x, y) (sqrt(x * x + y * y))
 #define constrain1(size, n) ((n) == (-1) ? ((n) + (size)) : (n))

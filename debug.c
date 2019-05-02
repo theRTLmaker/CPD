@@ -22,7 +22,7 @@ void printParticle(particle_t p) {
 	printf("	mass: %f\n", p.m);
 }
 
-void printAllParticles(particle_t *p, long long int nr_part) {
+void printAllParticles(particle_t *p, long long nr_part) {
 	long long int i = 0;
 	while(i < nr_part) 
 	{
