@@ -29,7 +29,7 @@ typedef struct _vector2grid{
 } vector2grid;
 
 typedef struct _particle_t {
-	int active;
+	long long number;
 	float m;
 	double positionX;
 	double positionY;

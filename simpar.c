@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
 
 	long k;
 	int idToSend[8] = {0};
+	int flag;
 
 	MPI_Request request;
 
@@ -33,20 +34,20 @@ int main(int argc, char *argv[])
 	MPI_Comm_size(MPI_COMM_WORLD, &numberOfProcess);
 	MPI_Comm_rank( MPI_COMM_WORLD, &rank );
 
-	// Criação de estrutura particula para enviar em MPI
+	// Criação de estrutura particula completa para enviar em MPI
 	const int nitemsPart = 10;
-	MPI_Aint displacementsPart[10] = {	offsetof(particle_t, active), 
-									offsetof(particle_t, m), 
-									offsetof(particle_t, positionX), 
-									offsetof(particle_t, positionY),
-									offsetof(particle_t, vx), 
-									offsetof(particle_t, vy), 
-									offsetof(particle_t, gridCoordinateX),
-									offsetof(particle_t, gridCoordinateY),
-									offsetof(particle_t, appliedForceX), 
-									offsetof(particle_t, appliedForceY)};
+	MPI_Aint displacementsPart[10] = {	offsetof(particle_t, number), 
+										offsetof(particle_t, m), 
+										offsetof(particle_t, positionX), 
+										offsetof(particle_t, positionY),
+										offsetof(particle_t, vx), 
+										offsetof(particle_t, vy), 
+										offsetof(particle_t, gridCoordinateX),
+										offsetof(particle_t, gridCoordinateY),
+										offsetof(particle_t, appliedForceX), 
+										offsetof(particle_t, appliedForceY)};
 	int block_lengthsPart[10]  = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-	MPI_Datatype typesPart[10] = {MPI_INT, MPI_FLOAT, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, 
+	MPI_Datatype typesPart[10] = {MPI_LONG_LONG_INT, MPI_FLOAT, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, 
 								MPI_DOUBLE, MPI_LONG, MPI_LONG, MPI_DOUBLE, MPI_DOUBLE};
 	MPI_Datatype mpi_particle_t;
 	MPI_Type_create_struct(nitemsPart, block_lengthsPart, displacementsPart, typesPart, &mpi_particle_t);
@@ -85,7 +86,7 @@ int main(int argc, char *argv[])
 	for(int i = 0; i < params.n_part; i++) {
 		if(par[i].gridCoordinateX >= params.xLowerBound && par[i].gridCoordinateX <= params.xUpperBound && 
 		   par[i].gridCoordinateY >= params.yLowerBound && par[i].gridCoordinateY <= params.yUpperBound) {
-        	par[i].active = 1;
+        	par[i].number = i;
 		}
 			
 	}
@@ -150,7 +151,7 @@ int main(int argc, char *argv[])
 		memset(grid.centerOfMassY, 0, params.gridSize*sizeof(double));
 
 		for(int i = params.n_part - 1; i >= 0; i--) {
-			if(par[i].active == 1) {
+			if(par[i].number >= 0) {
 				CENTEROFMASSX(par[i].gridCoordinateX, par[i].gridCoordinateY) = CENTEROFMASSX(par[i].gridCoordinateX, par[i].gridCoordinateY) + par[i].m * par[i].positionX;
 				CENTEROFMASSY(par[i].gridCoordinateX, par[i].gridCoordinateY) = CENTEROFMASSY(par[i].gridCoordinateX, par[i].gridCoordinateY) + par[i].m * par[i].positionY;
 				MASS(par[i].gridCoordinateX, par[i].gridCoordinateY) = MASS(par[i].gridCoordinateX, par[i].gridCoordinateY) + par[i].m;
@@ -267,7 +268,7 @@ int main(int argc, char *argv[])
 		int sideUPDOWN;
 		int sideLEFTRIGHT;
 		for(int i = params.n_part - 1; i >= 0; i = i - 1){
-			if(par[i].active == 1) {
+			if(par[i].number >= 0) {
 				par[i].appliedForceX = 0;
 				par[i].appliedForceY = 0;
 
@@ -313,6 +314,8 @@ int main(int argc, char *argv[])
 				par[i].vx += par[i].appliedForceX * invM; //a = F/m 
 				par[i].vy += par[i].appliedForceY * invM;
 
+
+
 				par[i].positionX += par[i].vx + 0.5 * par[i].appliedForceX * invM;//x = x0 + v0t + 0.5 a t^2 (t = 1)
 				par[i].positionY += par[i].vy + 0.5 * par[i].appliedForceY * invM;
 
@@ -326,8 +329,21 @@ int main(int argc, char *argv[])
 				// Updates the position of the particle on the grid of cells
 				par[i].gridCoordinateX = par[i].positionX * params.ncside;
 				par[i].gridCoordinateY = par[i].positionY * params.ncside;
-		}
+
+				// Verificar se particula ficou fora da área de trabalho
+				if(par[i].gridCoordinateX < params.xLowerBound || par[i].gridCoordinateX > params.xUpperBound || 
+					par[i].gridCoordinateY < params.yLowerBound || par[i].gridCoordinateY > params.yUpperBound) {
+					long long destiny = par[i].gridCoordinateX + par[i].gridCoordinateY * params.xSize;
+					MPI_Isend(&par[i], 1, mpi_particle_t, destiny, 2, MPI_COMM_WORLD, &request);
+				}
 			}
+		}
+		MPI_Wait(&request, &status);
+		// Verifica se existe alguma mensagem para ser recebida
+		MPI_Iprobe(MPI_ANY_SOURCE, 2, MPI_COMM_WORLD, &flag, &status);
+		if(flag == 1) {
+
+		}
 	}
 
 	MPI_Type_free(&mpi_particle_t);

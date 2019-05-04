@@ -56,7 +56,7 @@ void init_particles(particle_t *par) {
         par[i].gridCoordinateX = par[i].positionX * params.ncside / 1;
         par[i].gridCoordinateY = par[i].positionY * params.ncside / 1;
 
-        par[i].active = 0;
+        par[i].number = -1;
     }
 }
 
@@ -68,7 +68,7 @@ void computeGridPosition(particle_t *par) {
 		par[i].gridCoordinateX = par[i].positionX * params.ncside / 1;
         par[i].gridCoordinateY = par[i].positionY * params.ncside / 1;
 
-        par[i].active = 1;
+        par[i].number = i;
     }
 }
 
