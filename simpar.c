@@ -88,11 +88,22 @@ int main(int argc, char *argv[])
 		   par[i].gridCoordinateY >= params.yLowerBound && par[i].gridCoordinateY <= params.yUpperBound) {
         	par[i].number = i;
 		}
-			
-	}
+	}		
 
+/*  						topo
+	lateral esquerdo	-------------  lateral direito
+				    	| 1 | 2 | 3 |
+					    -------------
+						| 0 |   | 4 |
+						-------------
+						| 7 | 6 | 5 |
+						-------------
+							baixo
+
+*/
 	// Organizado em grelha
 	if(params.xSize != 1) {
+
 		// Enviar à esquerda
 		if(params.xLowerBound == 0)
 			idToSend[0] = rank + params.xSize - 1;
@@ -100,9 +111,17 @@ int main(int argc, char *argv[])
 			idToSend[0] = rank - 1;
 
 		// Enviar à esquerda cima
-		/*if(params.xLowerBound == 0)
-			
-		else*/
+		// Canto superior esquerdo
+		if(params.xLowerBound == 0 && params.yUpperBound == params.ncside - 1)
+			idToSend[1] = params.xSize - 1;
+		// Lateral esquerdo
+		else if(params.xLowerBound == 0 && params.yUpperBound != params.ncside - 1)
+			idToSend[1] = rank + 2*params.xSize - 1;
+		// Topo
+		else if(params.xLowerBound != 0 && params.yUpperBound == params.ncside - 1)
+			idToSend[1] = rank - numberOfProcess + params.xSize - 1;
+		else
+			idToSend[1] = rank + params.xSize - 1;
 
 		// Enviar à cima
 		if(params.yUpperBound == params.ncside - 1)
@@ -111,9 +130,17 @@ int main(int argc, char *argv[])
 			idToSend[2] =  rank + params.xSize;
 
 		// Enviar à direita cima
-		/*if(params.xLowerBound == 0)
-
-		else*/
+		// Canto superior direito
+		if (params.xUpperBound == params.ncside - 1 && params.yUpperBound == params.ncside - 1)
+			idToSend[3] =  0;
+		// Lateral direito
+		else if(params.xUpperBound == params.ncside - 1 && params.yUpperBound != params.ncside - 1)
+			idToSend[3] =  rank + 1;
+		// Topo
+		else if(params.xUpperBound != params.ncside - 1 && params.yUpperBound == params.ncside - 1)
+			idToSend[3] =  rank - numberOfProcess + params.xSize + 1;
+		else
+			idToSend[3] =  rank + params.xSize + 1;
 
 		// Enviar à direita
 		if(params.xUpperBound == params.ncside - 1)
@@ -122,21 +149,36 @@ int main(int argc, char *argv[])
 			idToSend[4] = rank + 1;
 
 		// Enviar à direita baixo
-		/*if(params.xLowerBound == 0)
+		// Canto inferior direito
+		if(params.xUpperBound == params.ncside - 1 && params.yLowerBound == 0)
+			idToSend[5] = numberOfProcess - params.xSize;
+		// Baixo
+		else if(params.xUpperBound != params.ncside - 1 && params.yLowerBound == 0)
+			idToSend[5] =  rank + numberOfProcess - params.xSize + 1;
+		// Lateral direito
+		else if(params.xUpperBound == params.ncside - 1 && params.yLowerBound != 0)
+			idToSend[5] =  rank - 2*params.xSize + 1;
+		else
+			idToSend[5] = rank - params.xSize + 1;
 
-		else*/
-
-		// Enviar à baixo
+		// Enviar a baixo
 		if(params.yLowerBound == 0)
 			idToSend[6] = rank + numberOfProcess - params.xSize;
 		else
 			idToSend[6] = rank - params.xSize;
 
 		// Enviar à esquerda baixo
-		/*if(params.xLowerBound == 0)
-
+		// Canto inferior esquerdo
+		if (params.xLowerBound == 0 && params.yLowerBound == 0)
+			idToSend[7] = numberOfProcess - 1;
+		// Lateral esquerdo
+		else if(params.xLowerBound == 0 && params.yLowerBound != 0)
+			idToSend[7] = rank - 1;
+		// Baixo
+		else if(params.xLowerBound != 0 && params.yLowerBound == 0)
+			idToSend[7] = rank + numberOfProcess - params.xSize - 1;
 		else
-*/
+			idToSend[7] = rank - params.xSize - 1;
 	}
 	// Organizada em linhas
 	else {
