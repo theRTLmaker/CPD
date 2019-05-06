@@ -17,7 +17,6 @@
 int main(int argc, char *argv[])
 { 
 	int rank, numberOfProcess;
-	MPI_Comm comm;
 	MPI_Status status;
 
 	grid_t grid;
@@ -27,6 +26,7 @@ int main(int argc, char *argv[])
 	long k;
 	int idToSend[8] = {0};
 	int flag;
+	int count, errs;
 
 	MPI_Request request;
 
@@ -377,6 +377,7 @@ int main(int argc, char *argv[])
 					par[i].gridCoordinateY < params.yLowerBound || par[i].gridCoordinateY > params.yUpperBound) {
 					long long destiny = par[i].gridCoordinateX + par[i].gridCoordinateY * params.xSize;
 					MPI_Isend(&par[i], 1, mpi_particle_t, destiny, 2, MPI_COMM_WORLD, &request);
+					par[i].number = -1;
 				}
 			}
 		}
@@ -384,7 +385,25 @@ int main(int argc, char *argv[])
 		// Verifica se existe alguma mensagem para ser recebida
 		MPI_Iprobe(MPI_ANY_SOURCE, 2, MPI_COMM_WORLD, &flag, &status);
 		if(flag == 1) {
-
+			particle_t par_aux;
+			for (long i = 0; i < 8; ++i) {
+				MPI_Iprobe(idToSend[i], 2, MPI_COMM_WORLD, &flag, &status);
+				if(flag == 1) {
+					MPI_Get_count( &status, mpi_particle_t, &count );
+		            if (count != MPI_UNDEFINED) {
+		                errs++;
+		                printf( "For partial send, Get_count did not return MPI_UNDEFINED\n" );fflush(stdout);
+		            }
+		            for (int j = 0; j < count; ++j) {
+		            	MPI_Recv(&par_aux, count, mpi_particle_t, idToSend[i], 2, MPI_COMM_WORLD, &status);
+		            	par[par_aux.number].number = par_aux.number;
+		            	par[par_aux.number].positionX = par_aux.positionX;
+		            	par[par_aux.number].positionY = par_aux.positionY;
+		            	par[par_aux.number].gridCoordinateX = par_aux.gridCoordinateX;
+		            	par[par_aux.number].gridCoordinateY = par_aux.gridCoordinateY;
+		            }
+				}
+			}
 		}
 	}
 
