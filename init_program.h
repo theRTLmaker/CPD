@@ -40,7 +40,7 @@ particle_t * CreateParticleArray(long long n_part);
 // Talvez para tentar paralelizar
 void computeGridPosition(particle_t *par);
 
-void findGridDivision(int numberOfProcess, int rank);
+int findGridDivision(int numberOfProcess, int rank);
 
 grid_tt ** initGridSendReceive(int rank);
 

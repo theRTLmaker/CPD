@@ -41,6 +41,14 @@ typedef struct _particle_t {
 	double appliedForceY;
 } particle_t;
 
+typedef struct _particle_t_reduced {
+	long long number;
+	double positionX;
+	double positionY;
+	long gridCoordinateX;
+	long gridCoordinateY;
+} particle_t_reduced;
+
 typedef struct _grid_t{
 	double *m;
 	double *centerOfMassX;

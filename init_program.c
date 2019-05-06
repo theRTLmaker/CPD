@@ -73,54 +73,24 @@ void computeGridPosition(particle_t *par) {
     }
 }
 
-void findGridDivision(int numberOfProcess, int rank) {
+int findGridDivision(int numberOfProcess, int rank) {
 	int dims[2] = {0,0};
-
 	MPI_Dims_create(numberOfProcess, 2, dims);
-	// para rever
+	if(dims[1] == 1) {
+		do {
+			numberOfProcess--;
+			MPI_Dims_create(numberOfProcess, 2, dims);
+		}while(dims[1] == 1);
+	}
 	params.xSize = dims[1];
 	params.ySize = dims[0];
 
-	/*long long aux;
-	if(fmod(sqrt(numberOfProcess), 1.0) == 0) {
-		params.xSize = sqrt(numberOfProcess);
-		params.ySize = sqrt(numberOfProcess);
-	}
-	else {
-		params.xSize = sqrt(numberOfProcess)/1;
-		params.ySize = params.xSize;
-		aux = params.xSize * params.ySize;
-		do {
-			if(aux < numberOfProcess) {
-				params.ySize += 1;
-			}
-			else if(aux > numberOfProcess){
-				params.xSize -= 1;
-			}
-			aux = params.xSize * params.ySize;
-
-		}while (aux != numberOfProcess);
-	}*/
-	
 	if(rank == 0)
 		printf("nr proc: %d, x: %ld, y: %ld, x*y = %ld\n", numberOfProcess, params.xSize, params.ySize,  params.xSize * params.ySize);
 
-	// Divisao em linhas
-	if(params.xSize == 1) {
-		// Limites do X
-		params.xLowerBound = 0;
-		params.xUpperBound = params.ncside - 1;
 
-		// Limite do Y
-		params.yLowerBound = rank * params.ncside/numberOfProcess;
-		// Quando o processo esta no limite Y da grelha
-		if(rank == numberOfProcess - 1) 
-			params.yUpperBound = params.ncside - 1;
-		else 
-			params.yUpperBound = (rank + 1) * params.ncside/numberOfProcess - 1;
-	}
 	// Divisao em grelha pelos processos
-	else {
+	if(rank != numberOfProcess - 1) {
 		// Limite inferior do X
 		params.xLowerBound = (rank % params.xSize) * params.ncside/params.xSize;
 
@@ -152,6 +122,7 @@ void findGridDivision(int numberOfProcess, int rank) {
 	params.sizeBigD = params.yUpperBound - params.yLowerBound;
 
 	printf("rank %d\nxmin: %ld, xmax: %ld\nymin: %ld, ymax: %ld\n", rank, params.xLowerBound, params.xUpperBound, params.yLowerBound, params.yUpperBound);
+	return numberOfProcess;
 }
 
 grid_t initTotalGrid(grid_t grid, long ncside) {
@@ -177,43 +148,31 @@ grid_t initTotalGrid(grid_t grid, long ncside) {
 
 grid_tt ** initGridSendReceive(int rank) {
 	grid_tt **grid;
-	if(params.xSize != 1) {
-		grid = (grid_tt **) malloc(8*sizeof(grid_tt *));
-		if(grid == NULL) {
-			printf("ERROR malloc\n");
-			exit(0);
-		}
-		for (int i = 0; i < 4; ++i) {
-			grid[i] = (grid_tt *) malloc((params.yUpperBound-params.yLowerBound + 1)*sizeof(grid_tt));
-			if(grid[i] == NULL) {
-				printf("ERROR malloc\n");
-				exit(0);
-			}
-			grid[i+1] = (grid_tt *) malloc(sizeof(grid_tt));
-			if(grid[i+1] == NULL) {
-				printf("ERROR malloc\n");
-				exit(0);
-			}
-			grid[i+2] = (grid_tt *) malloc((params.xUpperBound-params.xLowerBound + 1)*sizeof(grid_tt));
-			if(grid[i+2] == NULL) {
-				printf("ERROR malloc\n");
-				exit(0);
-			}
-			grid[i+3] = (grid_tt *) malloc(sizeof(grid_tt));
-			if(grid[i+3] == NULL) {
-				printf("ERROR malloc\n");
-				exit(0);
-			}
-		}
+	grid = (grid_tt **) malloc(8*sizeof(grid_tt *));
+	if(grid == NULL) {
+		printf("ERROR malloc\n");
+		exit(0);
 	}
-	else {
-		grid = (grid_tt **) malloc(2*sizeof(grid_tt *));
-		if(grid == NULL) {
+	for (int i = 0; i < 4; ++i) {
+		grid[i] = (grid_tt *) malloc((params.yUpperBound-params.yLowerBound + 1)*sizeof(grid_tt));
+		if(grid[i] == NULL) {
 			printf("ERROR malloc\n");
 			exit(0);
 		}
-		for (int i = 0; i < 2; ++i) {
-			/* code */
+		grid[i+1] = (grid_tt *) malloc(sizeof(grid_tt));
+		if(grid[i+1] == NULL) {
+			printf("ERROR malloc\n");
+			exit(0);
+		}
+		grid[i+2] = (grid_tt *) malloc((params.xUpperBound-params.xLowerBound + 1)*sizeof(grid_tt));
+		if(grid[i+2] == NULL) {
+			printf("ERROR malloc\n");
+			exit(0);
+		}
+		grid[i+3] = (grid_tt *) malloc(sizeof(grid_tt));
+		if(grid[i+3] == NULL) {
+			printf("ERROR malloc\n");
+			exit(0);
 		}
 	}
 

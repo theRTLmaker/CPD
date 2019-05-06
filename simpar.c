@@ -22,11 +22,13 @@ int main(int argc, char *argv[])
 	grid_t grid;
 	grid_tt **gridSendReceive;
 	particle_t *par;
+	particle_t_reduced par_aux;
+	particle_t_reduced par_aux_send;
 
 	long k;
 	int idToSend[8] = {0};
 	int flag;
-	int count, errs;
+	int count;
 
 	MPI_Request request;
 
@@ -53,6 +55,20 @@ int main(int argc, char *argv[])
 	MPI_Type_create_struct(nitemsPart, block_lengthsPart, displacementsPart, typesPart, &mpi_particle_t);
 	MPI_Type_commit(&mpi_particle_t);
 
+	const int nitemsPartReduce = 5;
+	MPI_Aint displacementsPartReduced[5] = {	offsetof(particle_t, number), 
+															offsetof(particle_t, positionX), 
+															offsetof(particle_t, positionY),
+															offsetof(particle_t, gridCoordinateX),
+															offsetof(particle_t, gridCoordinateY)
+														  };
+	int block_lengthsPartReduced[5]  = {1, 1, 1, 1, 1};
+	MPI_Datatype typesPartReduced[5] = {MPI_LONG_LONG_INT, MPI_DOUBLE, MPI_DOUBLE, MPI_LONG, MPI_LONG};
+	MPI_Datatype mpi_particle_t_reduced;
+	MPI_Type_create_struct(nitemsPartReduce, block_lengthsPartReduced, displacementsPartReduced, 
+							typesPartReduced, &mpi_particle_t_reduced);
+	MPI_Type_commit(&mpi_particle_t_reduced);
+
 	// Criação de estrutura grid para enviar em MPI
 	const int nitemsGrid = 3;
 	MPI_Aint displacementsGrid[3] = {	offsetof(grid_tt, m), 
@@ -70,7 +86,7 @@ int main(int argc, char *argv[])
 	
 	par = CreateParticleArray(params.n_part);
 
-	findGridDivision(numberOfProcess, rank);
+	numberOfProcess = findGridDivision(numberOfProcess, rank);
 	
 	grid = initTotalGrid(grid, params.ncside);
 
@@ -102,89 +118,83 @@ int main(int argc, char *argv[])
 
 */
 	// Organizado em grelha
-	if(params.xSize != 1) {
+	// Enviar à esquerda
+	if(params.xLowerBound == 0)
+		idToSend[0] = rank + params.xSize - 1;
+	else
+		idToSend[0] = rank - 1;
 
-		// Enviar à esquerda
-		if(params.xLowerBound == 0)
-			idToSend[0] = rank + params.xSize - 1;
-		else
-			idToSend[0] = rank - 1;
+	// Enviar à esquerda cima
+	// Canto superior esquerdo
+	if(params.xLowerBound == 0 && params.yUpperBound == params.ncside - 1)
+		idToSend[1] = params.xSize - 1;
+	// Lateral esquerdo
+	else if(params.xLowerBound == 0 && params.yUpperBound != params.ncside - 1)
+		idToSend[1] = rank + 2*params.xSize - 1;
+	// Topo
+	else if(params.xLowerBound != 0 && params.yUpperBound == params.ncside - 1)
+		idToSend[1] = rank - numberOfProcess + params.xSize - 1;
+	else
+		idToSend[1] = rank + params.xSize - 1;
 
-		// Enviar à esquerda cima
-		// Canto superior esquerdo
-		if(params.xLowerBound == 0 && params.yUpperBound == params.ncside - 1)
-			idToSend[1] = params.xSize - 1;
-		// Lateral esquerdo
-		else if(params.xLowerBound == 0 && params.yUpperBound != params.ncside - 1)
-			idToSend[1] = rank + 2*params.xSize - 1;
-		// Topo
-		else if(params.xLowerBound != 0 && params.yUpperBound == params.ncside - 1)
-			idToSend[1] = rank - numberOfProcess + params.xSize - 1;
-		else
-			idToSend[1] = rank + params.xSize - 1;
+	// Enviar à cima
+	if(params.yUpperBound == params.ncside - 1)
+		idToSend[2] = rank - numberOfProcess + params.xSize;
+	else
+		idToSend[2] =  rank + params.xSize;
 
-		// Enviar à cima
-		if(params.yUpperBound == params.ncside - 1)
-			idToSend[2] = rank - numberOfProcess + params.xSize;
-		else
-			idToSend[2] =  rank + params.xSize;
+	// Enviar à direita cima
+	// Canto superior direito
+	if (params.xUpperBound == params.ncside - 1 && params.yUpperBound == params.ncside - 1)
+		idToSend[3] =  0;
+	// Lateral direito
+	else if(params.xUpperBound == params.ncside - 1 && params.yUpperBound != params.ncside - 1)
+		idToSend[3] =  rank + 1;
+	// Topo
+	else if(params.xUpperBound != params.ncside - 1 && params.yUpperBound == params.ncside - 1)
+		idToSend[3] =  rank - numberOfProcess + params.xSize + 1;
+	else
+		idToSend[3] =  rank + params.xSize + 1;
 
-		// Enviar à direita cima
-		// Canto superior direito
-		if (params.xUpperBound == params.ncside - 1 && params.yUpperBound == params.ncside - 1)
-			idToSend[3] =  0;
-		// Lateral direito
-		else if(params.xUpperBound == params.ncside - 1 && params.yUpperBound != params.ncside - 1)
-			idToSend[3] =  rank + 1;
-		// Topo
-		else if(params.xUpperBound != params.ncside - 1 && params.yUpperBound == params.ncside - 1)
-			idToSend[3] =  rank - numberOfProcess + params.xSize + 1;
-		else
-			idToSend[3] =  rank + params.xSize + 1;
+	// Enviar à direita
+	if(params.xUpperBound == params.ncside - 1)
+		idToSend[4] = rank - params.xSize + 1;
+	else
+		idToSend[4] = rank + 1;
 
-		// Enviar à direita
-		if(params.xUpperBound == params.ncside - 1)
-			idToSend[4] = rank - params.xSize + 1;
-		else
-			idToSend[4] = rank + 1;
+	// Enviar à direita baixo
+	// Canto inferior direito
+	if(params.xUpperBound == params.ncside - 1 && params.yLowerBound == 0)
+		idToSend[5] = numberOfProcess - params.xSize;
+	// Baixo
+	else if(params.xUpperBound != params.ncside - 1 && params.yLowerBound == 0)
+		idToSend[5] =  rank + numberOfProcess - params.xSize + 1;
+	// Lateral direito
+	else if(params.xUpperBound == params.ncside - 1 && params.yLowerBound != 0)
+		idToSend[5] =  rank - 2*params.xSize + 1;
+	else
+		idToSend[5] = rank - params.xSize + 1;
 
-		// Enviar à direita baixo
-		// Canto inferior direito
-		if(params.xUpperBound == params.ncside - 1 && params.yLowerBound == 0)
-			idToSend[5] = numberOfProcess - params.xSize;
-		// Baixo
-		else if(params.xUpperBound != params.ncside - 1 && params.yLowerBound == 0)
-			idToSend[5] =  rank + numberOfProcess - params.xSize + 1;
-		// Lateral direito
-		else if(params.xUpperBound == params.ncside - 1 && params.yLowerBound != 0)
-			idToSend[5] =  rank - 2*params.xSize + 1;
-		else
-			idToSend[5] = rank - params.xSize + 1;
+	// Enviar a baixo
+	if(params.yLowerBound == 0)
+		idToSend[6] = rank + numberOfProcess - params.xSize;
+	else
+		idToSend[6] = rank - params.xSize;
 
-		// Enviar a baixo
-		if(params.yLowerBound == 0)
-			idToSend[6] = rank + numberOfProcess - params.xSize;
-		else
-			idToSend[6] = rank - params.xSize;
+	// Enviar à esquerda baixo
+	// Canto inferior esquerdo
+	if (params.xLowerBound == 0 && params.yLowerBound == 0)
+		idToSend[7] = numberOfProcess - 1;
+	// Lateral esquerdo
+	else if(params.xLowerBound == 0 && params.yLowerBound != 0)
+		idToSend[7] = rank - 1;
+	// Baixo
+	else if(params.xLowerBound != 0 && params.yLowerBound == 0)
+		idToSend[7] = rank + numberOfProcess - params.xSize - 1;
+	else
+		idToSend[7] = rank - params.xSize - 1;
 
-		// Enviar à esquerda baixo
-		// Canto inferior esquerdo
-		if (params.xLowerBound == 0 && params.yLowerBound == 0)
-			idToSend[7] = numberOfProcess - 1;
-		// Lateral esquerdo
-		else if(params.xLowerBound == 0 && params.yLowerBound != 0)
-			idToSend[7] = rank - 1;
-		// Baixo
-		else if(params.xLowerBound != 0 && params.yLowerBound == 0)
-			idToSend[7] = rank + numberOfProcess - params.xSize - 1;
-		else
-			idToSend[7] = rank - params.xSize - 1;
-	}
-	// Organizada em linhas
-	else {
-
-	}
-
+	int pos = 0;
 	// Time Step simulation
 	for (k = 0; k < params.timeStep; k++) {
 		// Run throw all the cells and resets all the center of mass
@@ -206,9 +216,8 @@ int main(int argc, char *argv[])
 			}
 		}
 
-
+		pos = 0;
 		// Copies the center of mass to be transmmited
-		int pos = 0;
 		for (int i = params.yUpperBound; i >= params.yLowerBound; i--) {
 			gridSendReceive[LEFTPROCESS][pos].centerOfMassX = CENTEROFMASSX(i, params.xLowerBound);
 			gridSendReceive[LEFTPROCESS][pos].centerOfMassY = CENTEROFMASSY(i, params.xLowerBound);
@@ -244,25 +253,24 @@ int main(int argc, char *argv[])
 		gridSendReceive[DOWNLEFTPROCESS][0].m = MASS(params.yLowerBound, params.xLowerBound);
 
 		// Envia os centros de massa das fronteiras e recebe das regiões vizinhas
-		if(params.xSize != 1) {
-			MPI_Irecv(gridSendReceive[8], params.sizeBigD, mpi_grid_t, idToSend[0], SENDCENTER,MPI_COMM_WORLD, &request);
-			MPI_Irecv(gridSendReceive[9], 1, mpi_grid_t, idToSend[1], SENDCENTER,MPI_COMM_WORLD, &request);
-			MPI_Irecv(gridSendReceive[10], params.sizeSmallD, mpi_grid_t, idToSend[2], SENDCENTER,MPI_COMM_WORLD, &request);
-			MPI_Irecv(gridSendReceive[11], 1, mpi_grid_t, idToSend[3], SENDCENTER,MPI_COMM_WORLD, &request);
-			MPI_Irecv(gridSendReceive[12], params.sizeBigD, mpi_grid_t, idToSend[4], SENDCENTER,MPI_COMM_WORLD, &request);
-			MPI_Irecv(gridSendReceive[13], 1, mpi_grid_t, idToSend[5], SENDCENTER,MPI_COMM_WORLD, &request);
-			MPI_Irecv(gridSendReceive[14], params.sizeSmallD, mpi_grid_t, idToSend[6], SENDCENTER,MPI_COMM_WORLD, &request);
-			MPI_Irecv(gridSendReceive[15], 1, mpi_grid_t, idToSend[7], SENDCENTER,MPI_COMM_WORLD, &request);
-			MPI_Send(gridSendReceive[0], params.sizeBigD, mpi_grid_t, idToSend[0], 0, MPI_COMM_WORLD);
-			MPI_Send(gridSendReceive[1], 1, mpi_grid_t, idToSend[1], 0, MPI_COMM_WORLD);
-			MPI_Send(gridSendReceive[2], params.sizeSmallD, mpi_grid_t, idToSend[2], 0, MPI_COMM_WORLD);
-			MPI_Send(gridSendReceive[3], 1, mpi_grid_t, idToSend[3], 0, MPI_COMM_WORLD);
-			MPI_Send(gridSendReceive[4], params.sizeBigD, mpi_grid_t, idToSend[4], 0, MPI_COMM_WORLD);
-			MPI_Send(gridSendReceive[5], 1, mpi_grid_t, idToSend[5], 0, MPI_COMM_WORLD);
-			MPI_Send(gridSendReceive[6], params.sizeSmallD, mpi_grid_t, idToSend[6], 0, MPI_COMM_WORLD);
-			MPI_Send(gridSendReceive[7], 1, mpi_grid_t, idToSend[7], 0, MPI_COMM_WORLD);
-			MPI_Wait(&request, &status);
-		}
+		MPI_Irecv(gridSendReceive[8], params.sizeBigD, mpi_grid_t, idToSend[0], SENDCENTER,MPI_COMM_WORLD, &request);
+		MPI_Irecv(gridSendReceive[9], 1, mpi_grid_t, idToSend[1], SENDCENTER,MPI_COMM_WORLD, &request);
+		MPI_Irecv(gridSendReceive[10], params.sizeSmallD, mpi_grid_t, idToSend[2], SENDCENTER,MPI_COMM_WORLD, &request);
+		MPI_Irecv(gridSendReceive[11], 1, mpi_grid_t, idToSend[3], SENDCENTER,MPI_COMM_WORLD, &request);
+		MPI_Irecv(gridSendReceive[12], params.sizeBigD, mpi_grid_t, idToSend[4], SENDCENTER,MPI_COMM_WORLD, &request);
+		MPI_Irecv(gridSendReceive[13], 1, mpi_grid_t, idToSend[5], SENDCENTER,MPI_COMM_WORLD, &request);
+		MPI_Irecv(gridSendReceive[14], params.sizeSmallD, mpi_grid_t, idToSend[6], SENDCENTER,MPI_COMM_WORLD, &request);
+		MPI_Irecv(gridSendReceive[15], 1, mpi_grid_t, idToSend[7], SENDCENTER,MPI_COMM_WORLD, &request);
+		MPI_Send(gridSendReceive[0], params.sizeBigD, mpi_grid_t, idToSend[0], 0, MPI_COMM_WORLD);
+		MPI_Send(gridSendReceive[1], 1, mpi_grid_t, idToSend[1], 0, MPI_COMM_WORLD);
+		MPI_Send(gridSendReceive[2], params.sizeSmallD, mpi_grid_t, idToSend[2], 0, MPI_COMM_WORLD);
+		MPI_Send(gridSendReceive[3], 1, mpi_grid_t, idToSend[3], 0, MPI_COMM_WORLD);
+		MPI_Send(gridSendReceive[4], params.sizeBigD, mpi_grid_t, idToSend[4], 0, MPI_COMM_WORLD);
+		MPI_Send(gridSendReceive[5], 1, mpi_grid_t, idToSend[5], 0, MPI_COMM_WORLD);
+		MPI_Send(gridSendReceive[6], params.sizeSmallD, mpi_grid_t, idToSend[6], 0, MPI_COMM_WORLD);
+		MPI_Send(gridSendReceive[7], 1, mpi_grid_t, idToSend[7], 0, MPI_COMM_WORLD);
+		MPI_Wait(&request, &status);
+		
 
 		// Updates the new values of the center of mass
 		pos = 0;
@@ -356,8 +364,6 @@ int main(int argc, char *argv[])
 				par[i].vx += par[i].appliedForceX * invM; //a = F/m 
 				par[i].vy += par[i].appliedForceY * invM;
 
-
-
 				par[i].positionX += par[i].vx + 0.5 * par[i].appliedForceX * invM;//x = x0 + v0t + 0.5 a t^2 (t = 1)
 				par[i].positionY += par[i].vy + 0.5 * par[i].appliedForceY * invM;
 
@@ -375,27 +381,36 @@ int main(int argc, char *argv[])
 				// Verificar se particula ficou fora da área de trabalho
 				if(par[i].gridCoordinateX < params.xLowerBound || par[i].gridCoordinateX > params.xUpperBound || 
 					par[i].gridCoordinateY < params.yLowerBound || par[i].gridCoordinateY > params.yUpperBound) {
+					par_aux_send.number = par[i].number;
+		            par_aux_send.positionX = par[i].positionX;
+		            par_aux_send.positionY = par[i].positionY;
+		            par_aux_send.gridCoordinateX = par[i].gridCoordinateX;
+		            par_aux_send.gridCoordinateY = par[i].gridCoordinateY;
 					long long destiny = par[i].gridCoordinateX + par[i].gridCoordinateY * params.xSize;
-					MPI_Isend(&par[i], 1, mpi_particle_t, destiny, 2, MPI_COMM_WORLD, &request);
+					MPI_Isend(&par_aux_send, 1, mpi_particle_t, destiny, 2, MPI_COMM_WORLD, &request);
 					par[i].number = -1;
 				}
 			}
 		}
 		MPI_Wait(&request, &status);
+
+		// Barreira de sincronizacao
+		if(MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
+			printf( "Error on barrier on iteration %ld\n", k);fflush(stdout);
+		}
+
 		// Verifica se existe alguma mensagem para ser recebida
 		MPI_Iprobe(MPI_ANY_SOURCE, 2, MPI_COMM_WORLD, &flag, &status);
 		if(flag == 1) {
-			particle_t par_aux;
 			for (long i = 0; i < 8; ++i) {
 				MPI_Iprobe(idToSend[i], 2, MPI_COMM_WORLD, &flag, &status);
 				if(flag == 1) {
 					MPI_Get_count( &status, mpi_particle_t, &count );
 		            if (count != MPI_UNDEFINED) {
-		                errs++;
 		                printf( "For partial send, Get_count did not return MPI_UNDEFINED\n" );fflush(stdout);
 		            }
 		            for (int j = 0; j < count; ++j) {
-		            	MPI_Recv(&par_aux, count, mpi_particle_t, idToSend[i], 2, MPI_COMM_WORLD, &status);
+		            	MPI_Recv(&par_aux, 1, mpi_particle_t_reduced, idToSend[i], 2, MPI_COMM_WORLD, &status);
 		            	par[par_aux.number].number = par_aux.number;
 		            	par[par_aux.number].positionX = par_aux.positionX;
 		            	par[par_aux.number].positionY = par_aux.positionY;
@@ -407,7 +422,64 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	/*for (int i = params.yUpperBound; i >= params.yLowerBound; i--) {
+		// Position X
+		MPI_Gather()
+		// Position Y
+		MPI_Gather()
+		// Mass
+		MPI_Gather()
+		CENTEROFMASSX(i, params.xLowerBound) = gridSendReceive[LEFTPROCESS + 8][pos].centerOfMassX;
+		CENTEROFMASSY(i, params.xLowerBound) = gridSendReceive[LEFTPROCESS + 8][pos].centerOfMassY;
+		MASS(i, params.xLowerBound) = gridSendReceive[LEFTPROCESS + 8][pos].m;
+		CENTEROFMASSX(i, params.xUpperBound) = gridSendReceive[RIGHTPROCESS + 8][pos].centerOfMassX;
+		CENTEROFMASSY(i, params.xUpperBound) = gridSendReceive[RIGHTPROCESS + 8][pos].centerOfMassY;
+		MASS(i, params.xUpperBound) = gridSendReceive[RIGHTPROCESS + 8][pos++].m;
+	}
+	
+	pos = 0;
+	for (int j = params.xUpperBound; j >= params.xLowerBound; j--) {
+		CENTEROFMASSX(params.yUpperBound, j) = gridSendReceive[UPPROCESS + 8][pos].centerOfMassX;
+		CENTEROFMASSY(params.yUpperBound, j) = gridSendReceive[UPPROCESS + 8][pos].centerOfMassY;
+		MASS(params.yUpperBound, j) = gridSendReceive[UPPROCESS + 8][pos].m;
+		CENTEROFMASSX(params.yLowerBound, j) = gridSendReceive[DOWNPROCESS + 8][pos].centerOfMassX;
+		CENTEROFMASSY(params.yLowerBound, j) = gridSendReceive[DOWNPROCESS + 8][pos].centerOfMassY;
+		MASS(params.yLowerBound, j) = gridSendReceive[DOWNPROCESS + 8][pos++].m;
+	}
+
+	// Position X
+	MPI_Gather()
+	// Position Y
+	MPI_Gather()
+	// Mass
+	MPI_Gather()*/
+
+	// Computes the total center of mass
+	if(rank == 0) {
+		double centerOfMassX = 0;
+		double centerOfMassY = 0;
+		double totalMass = 0;
+
+		// Calculates the center of mass of all cells
+		for(int i = 0; i < params.n_part; i++) {
+			centerOfMassX = centerOfMassX + par[i].m * par[i].positionX;
+			centerOfMassY = centerOfMassY + par[i].m * par[i].positionY;
+			totalMass = totalMass + par[i].m;
+		}
+
+		// prints the information
+		centerOfMassX = centerOfMassX / totalMass;
+		centerOfMassY = centerOfMassY / totalMass;
+		printf("%.2f %.2f\n", par[0].positionX, par[0].positionY);
+		printf("%.2f %.2f\n", centerOfMassX, centerOfMassY);
+    }
+
+	// Free everything
 	MPI_Type_free(&mpi_particle_t);
+	MPI_Type_free(&mpi_grid_t);
+	MPI_Type_free(&mpi_particle_t_reduced);
+	freeEverything(par, grid, params.ncside);
+
 	MPI_Finalize();
 
 	return 0;
