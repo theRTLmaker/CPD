@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <mpi.h>
 
 #define RND0_1 ((double) random() / ((long long)1<<31))
 
@@ -73,7 +74,14 @@ void computeGridPosition(particle_t *par) {
 }
 
 void findGridDivision(int numberOfProcess, int rank) {
-	long long aux;
+	int dims[2] = {0,0};
+
+	MPI_Dims_create(numberOfProcess, 2, dims);
+	// para rever
+	params.xSize = dims[1];
+	params.ySize = dims[0];
+
+	/*long long aux;
 	if(fmod(sqrt(numberOfProcess), 1.0) == 0) {
 		params.xSize = sqrt(numberOfProcess);
 		params.ySize = sqrt(numberOfProcess);
@@ -92,7 +100,7 @@ void findGridDivision(int numberOfProcess, int rank) {
 			aux = params.xSize * params.ySize;
 
 		}while (aux != numberOfProcess);
-	}
+	}*/
 	
 	if(rank == 0)
 		printf("nr proc: %d, x: %ld, y: %ld, x*y = %ld\n", numberOfProcess, params.xSize, params.ySize,  params.xSize * params.ySize);
