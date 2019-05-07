@@ -57,11 +57,11 @@ int main(int argc, char *argv[])
 
 	const int nitemsPartReduce = 5;
 	MPI_Aint displacementsPartReduced[5] = {	offsetof(particle_t, number), 
-															offsetof(particle_t, positionX), 
-															offsetof(particle_t, positionY),
-															offsetof(particle_t, gridCoordinateX),
-															offsetof(particle_t, gridCoordinateY)
-														  };
+												offsetof(particle_t, positionX), 
+												offsetof(particle_t, positionY),
+												offsetof(particle_t, gridCoordinateX),
+												offsetof(particle_t, gridCoordinateY)
+											  };
 	int block_lengthsPartReduced[5]  = {1, 1, 1, 1, 1};
 	MPI_Datatype typesPartReduced[5] = {MPI_LONG_LONG_INT, MPI_DOUBLE, MPI_DOUBLE, MPI_LONG, MPI_LONG};
 	MPI_Datatype mpi_particle_t_reduced;
@@ -72,9 +72,9 @@ int main(int argc, char *argv[])
 	// Criação de estrutura grid para enviar em MPI
 	const int nitemsGrid = 3;
 	MPI_Aint displacementsGrid[3] = {	offsetof(grid_tt, m), 
-									offsetof(grid_tt, centerOfMassX), 
-									offsetof(grid_tt, centerOfMassY), 
-									};
+										offsetof(grid_tt, centerOfMassX), 
+										offsetof(grid_tt, centerOfMassY), 
+										};
 	int block_lengthsGrid[3]  = {1, 1, 1};
 	MPI_Datatype typesGrid[3] = {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE};
 	MPI_Datatype mpi_grid_t;
@@ -92,12 +92,9 @@ int main(int argc, char *argv[])
 
 	gridSendReceive = initGridSendReceive(rank);
 	
-	if(rank == 0) {
-		// Inicia as particulas e descobre a sua posicao na grelha (pode ser paralelizado a descoberta )
-		init_particles(par);
-	}
 	
-	MPI_Bcast(par, params.n_part, mpi_particle_t, 0, MPI_COMM_WORLD);
+	// Inicia as particulas e descobre a sua posicao na grelha (pode ser paralelizado a descoberta )
+	init_particles(par);
 
 	for(int i = 0; i < params.n_part; i++) {
 		if(par[i].gridCoordinateX >= params.xLowerBound && par[i].gridCoordinateX <= params.xUpperBound && 
