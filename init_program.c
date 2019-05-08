@@ -121,7 +121,7 @@ int findGridDivision(int numberOfProcess, int rank) {
 	params.sizeHorizontal = params.xUpperBound - params.xLowerBound + 1;
 	params.sizeVertical = params.yUpperBound - params.yLowerBound + 1;
 
-	printf("rank %d\nxmin: %ld, xmax: %ld\nymin: %ld, ymax: %ld\nsizeHorizontal: %ld, sizeHorizontal: %ld\n", rank, params.xLowerBound, params.xUpperBound, params.yLowerBound, params.yUpperBound, params.sizeVertical, params.sizeHorizontal);fflush(stdout);
+	printf("rank %d\nxmin: %ld, xmax: %ld\nymin: %ld, ymax: %ld\nsizeVertical: %ld, sizeHorizontal: %ld\n\n", rank, params.xLowerBound, params.xUpperBound, params.yLowerBound, params.yUpperBound, params.sizeVertical, params.sizeHorizontal);fflush(stdout);
 	return numberOfProcess;
 }
 

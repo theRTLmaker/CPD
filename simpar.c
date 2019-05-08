@@ -250,9 +250,9 @@ int main(int argc, char *argv[])
 	else
 		idToSend[7] = rank - params.xSize - 1;
 
-	/* printf("rank %d:\n%d - %d - %d\n%d -   - %d\n%d - %d - %d\n", rank, idToSend[1],
-		idToSend[2], idToSend[3], idToSend[0], idToSend[4], idToSend[7], idToSend[6], idToSend[5]);fflush(stdout);
-	*/
+	printf("rank %d:\n%d - %d - %d\n%d -   - %d\n%d - %d - %d\n", rank, idToSend[1],
+			idToSend[2], idToSend[3], idToSend[0], idToSend[4], idToSend[7], idToSend[6], idToSend[5]);fflush(stdout);
+	
 
 	// Barreira de sincronizacao
 	if(MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
@@ -482,7 +482,7 @@ long long sent = 0;
 					par[i].number = -1;
 					sent++;
 
-					printf("\trank %d sent particle %d , %d-> x: %ld, y: %ld\n", rank, destiny, par[i].gridCoordinateY % params.ySize, par[i].gridCoordinateX, par[i].gridCoordinateY);fflush(stdout);
+					//printf("\trank %d sent particle %d , %d-> x: %ld, y: %ld\n", rank, destiny, par[i].gridCoordinateY % params.ySize, par[i].gridCoordinateX, par[i].gridCoordinateY);fflush(stdout);
 					
 
 				}
@@ -498,33 +498,32 @@ long long sent = 0;
 		//printf("rank %d After barrier, iteration %ld\n", rank, k);fflush(stdout);
 
 		// Verifica se existe alguma mensagem para ser recebida
-		MPI_Iprobe(MPI_ANY_SOURCE, 2, MPI_COMM_WORLD, &flag, &status);
+		//MPI_Probe(MPI_ANY_SOURCE, 2, MPI_COMM_WORLD, &status);
 long long reeceived = 0;
 		//printf("rank %d flag %d, barrier, iteration %ld\n", rank, flag, k);fflush(stdout);
-		if(flag == 1) {
-			MPI_Get_count( &status, mpi_particle_t_reduced, &count );
-			for (long i = 0; i < 8; ++i) {
-				MPI_Iprobe(idToSend[i], 2, MPI_COMM_WORLD, &flag, &status);
-				if(flag == 1) {
-					MPI_Get_count( &status, mpi_particle_t_reduced, &count );
-		            if (count != MPI_UNDEFINED) {
-			            for (int j = 0; j < count; ++j) {
-			            	MPI_Recv(&par_aux, 1, mpi_particle_t_reduced, idToSend[i], 2, MPI_COMM_WORLD, &status);
-			            	par[par_aux.number].number = par_aux.number;
-			            	par[par_aux.number].positionX = par_aux.positionX;
-			            	par[par_aux.number].positionY = par_aux.positionY;
-			            	par[par_aux.number].vx = par_aux.vx;
-			            	par[par_aux.number].vy = par_aux.vy;
-			            	par[par_aux.number].gridCoordinateX = par_aux.gridCoordinateX;
-			            	par[par_aux.number].gridCoordinateY = par_aux.gridCoordinateY;
-			            	printf("\trank %d ŕeceived particle %d\n", rank, idToSend[i]);fflush(stdout);
-			            	reeceived++;
-			            }
-		            }
+			//MPI_Get_count( &status, mpi_particle_t_reduced, &count );
+			//printf("\trank = %d count %d\n", rank, count);
+
+		for (long i = 0; i < 8; ++i) {
+			flag = 1;
+			while(flag) {	
+				MPI_Iprobe(idToSend[i], 2, MPI_COMM_WORLD,&flag, &status);
+				if(flag) { 
+	            	MPI_Recv(&par_aux, 1, mpi_particle_t_reduced, idToSend[i], 2, MPI_COMM_WORLD, &status);
+	            	par[par_aux.number].number = par_aux.number;
+	            	par[par_aux.number].positionX = par_aux.positionX;
+	            	par[par_aux.number].positionY = par_aux.positionY;
+	            	par[par_aux.number].vx = par_aux.vx;
+	            	par[par_aux.number].vy = par_aux.vy;
+	            	par[par_aux.number].gridCoordinateX = par_aux.gridCoordinateX;
+	            	par[par_aux.number].gridCoordinateY = par_aux.gridCoordinateY;
+	            	//printf("\trank %d ŕeceived particle %d\n", rank, idToSend[i]);fflush(stdout);
+	            	reeceived++;
 				}
 			}
 		}
-		printf("\t\trank %d end iteration %ld -> received %lld, sent %lld\n", rank, k, reeceived, sent);fflush(stdout);
+		
+		//printf("\t\trank %d end iteration %ld -> received %lld, sent %lld\n", rank, k, reeceived, sent);fflush(stdout);
 reeceived = 0;			
 		for(long long i = 0; i < params.n_part; i++) {
 			if(par[i].number != -1) {
@@ -533,7 +532,7 @@ reeceived = 0;
 		}
 
 
-		printf("\t\trank %d end iteration %ld -> particels %lld\n", rank, k, reeceived);fflush(stdout);
+		//printf("\t\trank %d end iteration %ld -> particels %lld\n", rank, k, reeceived);fflush(stdout);
 	}
 
 
@@ -544,7 +543,7 @@ reeceived = 0;
 	}
 
 
-	printf("\n");fflush(stdout);
+	//printf("\n");fflush(stdout);
 
 	particle_t_final particle_recv;
 long long max = 0;
@@ -560,7 +559,7 @@ long long reeceived = 0;
 				max++;
 			}
 		}
-		printf("\t\t\trank: %d -> Send ALL -> max %lld\n", rank, max);fflush(stdout);
+		//printf("\t\t\trank: %d -> Send ALL -> max %lld\n", rank, max);fflush(stdout);
 	}
 	else {
 		for(long long i = 0; i < params.n_part; i++) {
@@ -573,7 +572,7 @@ long long reeceived = 0;
 			}
 		}
 
-		printf("\t\t\tReceived ALL\n");fflush(stdout);
+		//printf("\t\t\tReceived ALL\n");fflush(stdout);
 
 		// Computes the total center of mass
 		double centerOfMassX = 0;
