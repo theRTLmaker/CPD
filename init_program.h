@@ -23,8 +23,8 @@ typedef struct _parameters{
 	long xUpperBound;
 	long yLowerBound;
 	long yUpperBound;
-	long sizeBigD;
-	long sizeSmallD;
+	long sizeVertical;
+	long sizeHorizontal;
 } parameters;
 
 extern parameters params;

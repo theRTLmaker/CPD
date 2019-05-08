@@ -36,34 +36,33 @@ int main(int argc, char *argv[])
 	MPI_Comm_size(MPI_COMM_WORLD, &numberOfProcess);
 	MPI_Comm_rank( MPI_COMM_WORLD, &rank );
 
-	// Criação de estrutura particula completa para enviar em MPI
-	const int nitemsPart = 10;
-	MPI_Aint displacementsPart[10] = {	offsetof(particle_t, number), 
-										offsetof(particle_t, m), 
-										offsetof(particle_t, positionX), 
-										offsetof(particle_t, positionY),
-										offsetof(particle_t, vx), 
-										offsetof(particle_t, vy), 
-										offsetof(particle_t, gridCoordinateX),
-										offsetof(particle_t, gridCoordinateY),
-										offsetof(particle_t, appliedForceX), 
-										offsetof(particle_t, appliedForceY)};
-	int block_lengthsPart[10]  = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-	MPI_Datatype typesPart[10] = {MPI_LONG_LONG_INT, MPI_FLOAT, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, 
-								MPI_DOUBLE, MPI_LONG, MPI_LONG, MPI_DOUBLE, MPI_DOUBLE};
+	// Criação de estrutura particula para enviar em MPI
+	const int nitemsPart = 3;
+	MPI_Aint displacementsPart[3] = {	offsetof(particle_t_reduced, number), 
+										offsetof(particle_t_reduced, positionX), 
+										offsetof(particle_t_reduced, positionY)
+									};
+
+	int block_lengthsPart[3]  = {1, 1, 1};
+	MPI_Datatype typesPart[3] = {MPI_LONG_LONG_INT, MPI_DOUBLE, MPI_DOUBLE};
 	MPI_Datatype mpi_particle_t;
-	MPI_Type_create_struct(nitemsPart, block_lengthsPart, displacementsPart, typesPart, &mpi_particle_t);
+	MPI_Type_create_struct(nitemsPart, block_lengthsPart, displacementsPart, 
+							typesPart, &mpi_particle_t);
 	MPI_Type_commit(&mpi_particle_t);
 
-	const int nitemsPartReduce = 5;
-	MPI_Aint displacementsPartReduced[5] = {	offsetof(particle_t, number), 
-												offsetof(particle_t, positionX), 
-												offsetof(particle_t, positionY),
-												offsetof(particle_t, gridCoordinateX),
-												offsetof(particle_t, gridCoordinateY)
-											  };
-	int block_lengthsPartReduced[5]  = {1, 1, 1, 1, 1};
-	MPI_Datatype typesPartReduced[5] = {MPI_LONG_LONG_INT, MPI_DOUBLE, MPI_DOUBLE, MPI_LONG, MPI_LONG};
+	// Criação de estrutura particula para enviar em MPI
+	const int nitemsPartReduce = 7;
+	MPI_Aint displacementsPartReduced[7] = {	offsetof(particle_t_reduced, number), 
+												offsetof(particle_t_reduced, positionX), 
+												offsetof(particle_t_reduced, positionY),
+												offsetof(particle_t_reduced, vx),
+												offsetof(particle_t_reduced, vy),
+												offsetof(particle_t_reduced, gridCoordinateX),
+												offsetof(particle_t_reduced, gridCoordinateY)
+											};
+
+	int block_lengthsPartReduced[7]  = {1, 1, 1, 1, 1, 1, 1};
+	MPI_Datatype typesPartReduced[7] = {MPI_LONG_LONG_INT, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_LONG, MPI_LONG};
 	MPI_Datatype mpi_particle_t_reduced;
 	MPI_Type_create_struct(nitemsPartReduce, block_lengthsPartReduced, displacementsPartReduced, 
 							typesPartReduced, &mpi_particle_t_reduced);
@@ -74,7 +73,7 @@ int main(int argc, char *argv[])
 	MPI_Aint displacementsGrid[3] = {	offsetof(grid_tt, m), 
 										offsetof(grid_tt, centerOfMassX), 
 										offsetof(grid_tt, centerOfMassY), 
-										};
+									};
 	int block_lengthsGrid[3]  = {1, 1, 1};
 	MPI_Datatype typesGrid[3] = {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE};
 	MPI_Datatype mpi_grid_t;
@@ -87,22 +86,22 @@ int main(int argc, char *argv[])
 	par = CreateParticleArray(params.n_part);
 
 	numberOfProcess = findGridDivision(numberOfProcess, rank);
+
 	
 	grid = initTotalGrid(grid, params.ncside);
 
 	gridSendReceive = initGridSendReceive(rank);
 	
-	
 	// Inicia as particulas e descobre a sua posicao na grelha (pode ser paralelizado a descoberta )
 	init_particles(par);
 
+	// Ativam as particulas que lhes pertencem
 	for(int i = 0; i < params.n_part; i++) {
 		if(par[i].gridCoordinateX >= params.xLowerBound && par[i].gridCoordinateX <= params.xUpperBound && 
 		   par[i].gridCoordinateY >= params.yLowerBound && par[i].gridCoordinateY <= params.yUpperBound) {
         	par[i].number = i;
 		}
 	}		
-
 /*  						topo
 	lateral esquerdo	-------------  lateral direito
 				    	| 1 | 2 | 3 |
@@ -190,10 +189,20 @@ int main(int argc, char *argv[])
 		idToSend[7] = rank + numberOfProcess - params.xSize - 1;
 	else
 		idToSend[7] = rank - params.xSize - 1;
+	
+	// Barreira de sincronizacao
+	if(MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
+		printf( "Error on barrier on iteration\n");fflush(stdout);
+	}
 
+	
 	int pos = 0;
 	// Time Step simulation
 	for (k = 0; k < params.timeStep; k++) {
+
+		printf("iteration %ld\n", k);fflush(stdout);
+
+
 		// Run throw all the cells and resets all the center of mass
 		memset(grid.m, 0, params.gridSize*sizeof(double));
 		memset(grid.centerOfMassX, 0, params.gridSize*sizeof(double));
@@ -249,24 +258,36 @@ int main(int argc, char *argv[])
 		gridSendReceive[DOWNLEFTPROCESS][0].centerOfMassY = CENTEROFMASSY(params.yLowerBound, params.xLowerBound);
 		gridSendReceive[DOWNLEFTPROCESS][0].m = MASS(params.yLowerBound, params.xLowerBound);
 
+		
+
 		// Envia os centros de massa das fronteiras e recebe das regiões vizinhas
-		MPI_Irecv(gridSendReceive[8], params.sizeBigD, mpi_grid_t, idToSend[0], SENDCENTER,MPI_COMM_WORLD, &request);
+		MPI_Irecv(gridSendReceive[8], params.sizeVertical, mpi_grid_t, idToSend[0], SENDCENTER,MPI_COMM_WORLD, &request);
 		MPI_Irecv(gridSendReceive[9], 1, mpi_grid_t, idToSend[1], SENDCENTER,MPI_COMM_WORLD, &request);
-		MPI_Irecv(gridSendReceive[10], params.sizeSmallD, mpi_grid_t, idToSend[2], SENDCENTER,MPI_COMM_WORLD, &request);
+		//printf("1 - olaaaa %d\n", rank);fflush(stdout);
+		MPI_Irecv(gridSendReceive[10], params.sizeHorizontal, mpi_grid_t, idToSend[2], SENDCENTER,MPI_COMM_WORLD, &request);
+		//printf("2 - olaaaa %d\n", rank);fflush(stdout);
 		MPI_Irecv(gridSendReceive[11], 1, mpi_grid_t, idToSend[3], SENDCENTER,MPI_COMM_WORLD, &request);
-		MPI_Irecv(gridSendReceive[12], params.sizeBigD, mpi_grid_t, idToSend[4], SENDCENTER,MPI_COMM_WORLD, &request);
+		//printf("3 - olaaaa %d\n", rank);fflush(stdout);
+		MPI_Irecv(gridSendReceive[12], params.sizeVertical, mpi_grid_t, idToSend[4], SENDCENTER,MPI_COMM_WORLD, &request);
 		MPI_Irecv(gridSendReceive[13], 1, mpi_grid_t, idToSend[5], SENDCENTER,MPI_COMM_WORLD, &request);
-		MPI_Irecv(gridSendReceive[14], params.sizeSmallD, mpi_grid_t, idToSend[6], SENDCENTER,MPI_COMM_WORLD, &request);
+		MPI_Irecv(gridSendReceive[14], params.sizeHorizontal, mpi_grid_t, idToSend[6], SENDCENTER,MPI_COMM_WORLD, &request);
 		MPI_Irecv(gridSendReceive[15], 1, mpi_grid_t, idToSend[7], SENDCENTER,MPI_COMM_WORLD, &request);
-		MPI_Send(gridSendReceive[0], params.sizeBigD, mpi_grid_t, idToSend[0], 0, MPI_COMM_WORLD);
+		MPI_Send(gridSendReceive[0], params.sizeVertical, mpi_grid_t, idToSend[0], 0, MPI_COMM_WORLD);
 		MPI_Send(gridSendReceive[1], 1, mpi_grid_t, idToSend[1], 0, MPI_COMM_WORLD);
-		MPI_Send(gridSendReceive[2], params.sizeSmallD, mpi_grid_t, idToSend[2], 0, MPI_COMM_WORLD);
+		MPI_Send(gridSendReceive[2], params.sizeHorizontal, mpi_grid_t, idToSend[2], 0, MPI_COMM_WORLD);
 		MPI_Send(gridSendReceive[3], 1, mpi_grid_t, idToSend[3], 0, MPI_COMM_WORLD);
-		MPI_Send(gridSendReceive[4], params.sizeBigD, mpi_grid_t, idToSend[4], 0, MPI_COMM_WORLD);
+		MPI_Send(gridSendReceive[4], params.sizeVertical, mpi_grid_t, idToSend[4], 0, MPI_COMM_WORLD);
 		MPI_Send(gridSendReceive[5], 1, mpi_grid_t, idToSend[5], 0, MPI_COMM_WORLD);
-		MPI_Send(gridSendReceive[6], params.sizeSmallD, mpi_grid_t, idToSend[6], 0, MPI_COMM_WORLD);
+		MPI_Send(gridSendReceive[6], params.sizeHorizontal, mpi_grid_t, idToSend[6], 0, MPI_COMM_WORLD);
 		MPI_Send(gridSendReceive[7], 1, mpi_grid_t, idToSend[7], 0, MPI_COMM_WORLD);
 		MPI_Wait(&request, &status);
+
+
+		// Barreira de sincronizacao
+		if(MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
+			printf( "Error on barrier on iteration %ld\n", k);fflush(stdout);
+		}
+
 		
 
 		// Updates the new values of the center of mass
@@ -306,7 +327,6 @@ int main(int argc, char *argv[])
 		CENTEROFMASSY(params.yLowerBound, params.xLowerBound) = gridSendReceive[DOWNLEFTPROCESS + 8][0].centerOfMassY;
 		MASS(params.yLowerBound, params.xLowerBound) = gridSendReceive[DOWNLEFTPROCESS + 8][0].m;
 
-		
 
 		// Compute interactions
 		// Run all particles
@@ -381,11 +401,19 @@ int main(int argc, char *argv[])
 					par_aux_send.number = par[i].number;
 		            par_aux_send.positionX = par[i].positionX;
 		            par_aux_send.positionY = par[i].positionY;
+		            par_aux_send.vx = par[i].vx;
+		            par_aux_send.vy = par[i].vy;
 		            par_aux_send.gridCoordinateX = par[i].gridCoordinateX;
 		            par_aux_send.gridCoordinateY = par[i].gridCoordinateY;
-					long long destiny = par[i].gridCoordinateX + par[i].gridCoordinateY * params.xSize;
-					MPI_Isend(&par_aux_send, 1, mpi_particle_t, destiny, 2, MPI_COMM_WORLD, &request);
+					int destiny = (par[i].gridCoordinateX / (params.ncside / params.xSize));
+					if(destiny == params.xSize) destiny -= 1;
+					int destiny_aux = (par[i].gridCoordinateY /(params.ncside / params.ySize));
+					if(destiny_aux == params.ySize) destiny_aux -= 1;
+					destiny = destiny + destiny_aux * params.xSize;
+					MPI_Isend(&par_aux_send, 1, mpi_particle_t_reduced, destiny, 2, MPI_COMM_WORLD, &request);
 					par[i].number = -1;
+					//printf("rank %d sent particle\n", rank);fflush(stdout);
+
 				}
 			}
 		}
@@ -396,69 +424,82 @@ int main(int argc, char *argv[])
 			printf( "Error on barrier on iteration %ld\n", k);fflush(stdout);
 		}
 
+		//printf("rank %d After barrier, iteration %ld\n", rank, k);fflush(stdout);
+
 		// Verifica se existe alguma mensagem para ser recebida
 		MPI_Iprobe(MPI_ANY_SOURCE, 2, MPI_COMM_WORLD, &flag, &status);
+
+		//printf("rank %d flag %d, barrier, iteration %ld\n", rank, flag, k);fflush(stdout);
 		if(flag == 1) {
 			for (long i = 0; i < 8; ++i) {
 				MPI_Iprobe(idToSend[i], 2, MPI_COMM_WORLD, &flag, &status);
 				if(flag == 1) {
-					MPI_Get_count( &status, mpi_particle_t, &count );
+					MPI_Get_count( &status, mpi_particle_t_reduced, &count );
 		            if (count != MPI_UNDEFINED) {
-		                printf( "For partial send, Get_count did not return MPI_UNDEFINED\n" );fflush(stdout);
-		            }
-		            for (int j = 0; j < count; ++j) {
-		            	MPI_Recv(&par_aux, 1, mpi_particle_t_reduced, idToSend[i], 2, MPI_COMM_WORLD, &status);
-		            	par[par_aux.number].number = par_aux.number;
-		            	par[par_aux.number].positionX = par_aux.positionX;
-		            	par[par_aux.number].positionY = par_aux.positionY;
-		            	par[par_aux.number].gridCoordinateX = par_aux.gridCoordinateX;
-		            	par[par_aux.number].gridCoordinateY = par_aux.gridCoordinateY;
+			            for (int j = 0; j < count; ++j) {
+			            	MPI_Recv(&par_aux, 1, mpi_particle_t_reduced, idToSend[i], 2, MPI_COMM_WORLD, &status);
+			            	par[par_aux.number].number = par_aux.number;
+			            	par[par_aux.number].positionX = par_aux.positionX;
+			            	par[par_aux.number].positionY = par_aux.positionY;
+			            	par[par_aux.number].vx = par_aux.vx;
+			            	par[par_aux.number].vy = par_aux.vy;
+			            	par[par_aux.number].gridCoordinateX = par_aux.gridCoordinateX;
+			            	par[par_aux.number].gridCoordinateY = par_aux.gridCoordinateY;
+			            	//printf("rank %d ŕeceived particle\n", rank);fflush(stdout);
+			            }
 		            }
 				}
 			}
 		}
+	//	printf("rank %d end iteration %ld\n", rank, k);fflush(stdout);
 	}
 
-	/*for (int i = params.yUpperBound; i >= params.yLowerBound; i--) {
-		// Position X
-		MPI_Gather()
-		// Position Y
-		MPI_Gather()
-		// Mass
-		MPI_Gather()
-		CENTEROFMASSX(i, params.xLowerBound) = gridSendReceive[LEFTPROCESS + 8][pos].centerOfMassX;
-		CENTEROFMASSY(i, params.xLowerBound) = gridSendReceive[LEFTPROCESS + 8][pos].centerOfMassY;
-		MASS(i, params.xLowerBound) = gridSendReceive[LEFTPROCESS + 8][pos].m;
-		CENTEROFMASSX(i, params.xUpperBound) = gridSendReceive[RIGHTPROCESS + 8][pos].centerOfMassX;
-		CENTEROFMASSY(i, params.xUpperBound) = gridSendReceive[RIGHTPROCESS + 8][pos].centerOfMassY;
-		MASS(i, params.xUpperBound) = gridSendReceive[RIGHTPROCESS + 8][pos++].m;
-	}
-	
-	pos = 0;
-	for (int j = params.xUpperBound; j >= params.xLowerBound; j--) {
-		CENTEROFMASSX(params.yUpperBound, j) = gridSendReceive[UPPROCESS + 8][pos].centerOfMassX;
-		CENTEROFMASSY(params.yUpperBound, j) = gridSendReceive[UPPROCESS + 8][pos].centerOfMassY;
-		MASS(params.yUpperBound, j) = gridSendReceive[UPPROCESS + 8][pos].m;
-		CENTEROFMASSX(params.yLowerBound, j) = gridSendReceive[DOWNPROCESS + 8][pos].centerOfMassX;
-		CENTEROFMASSY(params.yLowerBound, j) = gridSendReceive[DOWNPROCESS + 8][pos].centerOfMassY;
-		MASS(params.yLowerBound, j) = gridSendReceive[DOWNPROCESS + 8][pos++].m;
+
+//	printf("rank %d ENDDDDDDDDDDD\n", rank);fflush(stdout);
+	// Barreira de sincronizacao
+	if(MPI_Barrier(MPI_COMM_WORLD) != MPI_SUCCESS) {
+		printf( "Error on barrier on iteration %ld\n", k);fflush(stdout);
 	}
 
-	// Position X
-	MPI_Gather()
-	// Position Y
-	MPI_Gather()
-	// Mass
-	MPI_Gather()*/
 
-	// Computes the total center of mass
-	if(rank == 0) {
+	printf("\n");fflush(stdout);
+
+	particle_t_final particle_recv;
+long long max = 0;
+long long reeceived = 0;
+	if(rank != 0) {
+		for(long long i = 0; i < params.n_part; i++) {
+			//printf("rank: %d, i = %lld\n",rank, i);fflush(stdout);
+			if(par[i].number != -1) {
+				particle_recv.number = par[i].number;
+				particle_recv.positionX = par[i].positionX;
+				particle_recv.positionY = par[i].positionY;
+				MPI_Isend(&particle_recv, 1, mpi_particle_t, 0, 3, MPI_COMM_WORLD, &request);
+				max++;
+			}
+		}
+		printf("\t\t\trank: %d -> Send ALL -> max %lld\n", rank, max);fflush(stdout);
+	}
+	else {
+		for(long long i = 0; i < params.n_part; i++) {
+			if(par[i].number == -1) {
+				printf("i = %lld -> reeceived %lld\n", i, reeceived);fflush(stdout);
+				MPI_Recv(&particle_recv, 1, mpi_particle_t, MPI_ANY_SOURCE, 3, MPI_COMM_WORLD, &status);
+				par[particle_recv.number].positionX = particle_recv.positionX;
+				par[particle_recv.number].positionY = particle_recv.positionY;
+				reeceived++;
+			}
+		}
+
+		printf("\t\t\tReceived ALL\n");fflush(stdout);
+
+		// Computes the total center of mass
 		double centerOfMassX = 0;
 		double centerOfMassY = 0;
 		double totalMass = 0;
 
 		// Calculates the center of mass of all cells
-		for(int i = 0; i < params.n_part; i++) {
+		for(long long i = 0; i < params.n_part; i++) {
 			centerOfMassX = centerOfMassX + par[i].m * par[i].positionX;
 			centerOfMassY = centerOfMassY + par[i].m * par[i].positionY;
 			totalMass = totalMass + par[i].m;
@@ -472,9 +513,9 @@ int main(int argc, char *argv[])
     }
 
 	// Free everything
-	MPI_Type_free(&mpi_particle_t);
 	MPI_Type_free(&mpi_grid_t);
 	MPI_Type_free(&mpi_particle_t_reduced);
+	MPI_Type_free(&mpi_particle_t);
 	freeEverything(par, grid, params.ncside);
 
 	MPI_Finalize();

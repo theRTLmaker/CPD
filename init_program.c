@@ -85,43 +85,43 @@ int findGridDivision(int numberOfProcess, int rank) {
 	params.xSize = dims[1];
 	params.ySize = dims[0];
 
-	if(rank == 0)
-		printf("nr proc: %d, x: %ld, y: %ld, x*y = %ld\n", numberOfProcess, params.xSize, params.ySize,  params.xSize * params.ySize);
+	if(rank == 0) {
+		printf("nr proc: %d, x: %ld, y: %ld, x*y = %ld\n", numberOfProcess, params.xSize, params.ySize,  params.xSize * params.ySize);fflush(stdout);
+	}
 
 
 	// Divisao em grelha pelos processos
-	if(rank != numberOfProcess - 1) {
-		// Limite inferior do X
-		params.xLowerBound = (rank % params.xSize) * params.ncside/params.xSize;
+	// Limite inferior do X
+	params.xLowerBound = (rank % params.xSize) * (params.ncside/params.xSize);
+	
+	// Limite inferior do Y
+	params.yLowerBound = (rank / params.ySize) * (params.ncside/params.ySize);
+	
+	// Quando o processo esta no limite X da grelha
+	if(rank % params.xSize == params.xSize - 1) {
+		// limite superior do X 
+		params.xUpperBound = params.ncside - 1;
 
-		// Limite inferior do Y
-		params.yLowerBound = (rank / params.ySize) * params.ncside/params.ySize;
-
-		// Quando o processo esta no limite X da grelha
-		if(rank % params.xSize == params.xSize - 1) {
-			// limite superior do X 
-			params.xUpperBound = params.ncside - 1;
-
-			// Quando o processo esta no limite Y da grelha
-			if(rank / params.ySize == params.ySize - 1) 
-				params.yUpperBound = params.ncside - 1;
-			else
-				params.yUpperBound = ((rank + 1) / params.ySize) * params.ncside/params.ySize - 1;
-		}
-		else{
-			params.xUpperBound = ((rank + 1) % params.xSize) * params.ncside/params.xSize - 1;
-
-			if(rank / params.ySize == params.ySize - 1)
-				params.yUpperBound = params.ncside - 1;
-			else
-				params.yUpperBound = ((rank + 1) / params.ySize) * params.ncside/params.ySize - 1;
-		}
+		// Quando o processo esta no limite Y da grelha
+		if(rank / params.ySize == params.ySize - 1) 
+			params.yUpperBound = params.ncside - 1;
+		else
+			params.yUpperBound = ((rank + params.xSize) / params.ySize) * (params.ncside/params.ySize) - 1;
 	}
+	else{
+		params.xUpperBound = ((rank + 1) % params.xSize) * (params.ncside/params.xSize) - 1;
 
-	params.sizeSmallD = params.xUpperBound - params.xLowerBound;
-	params.sizeBigD = params.yUpperBound - params.yLowerBound;
+		if(rank / params.ySize == params.ySize - 1)
+			params.yUpperBound = params.ncside - 1;
+		else
+			params.yUpperBound = ((rank + params.xSize)/ params.ySize) * (params.ncside/params.ySize) - 1;
+	}
+	
 
-	printf("rank %d\nxmin: %ld, xmax: %ld\nymin: %ld, ymax: %ld\n", rank, params.xLowerBound, params.xUpperBound, params.yLowerBound, params.yUpperBound);
+	params.sizeHorizontal = params.xUpperBound - params.xLowerBound + 1;
+	params.sizeVertical = params.yUpperBound - params.yLowerBound + 1;
+
+	printf("rank %d\nxmin: %ld, xmax: %ld\nymin: %ld, ymax: %ld\nsizeHorizontal: %ld, sizeHorizontal: %ld\n", rank, params.xLowerBound, params.xUpperBound, params.yLowerBound, params.yUpperBound, params.sizeVertical, params.sizeHorizontal);fflush(stdout);
 	return numberOfProcess;
 }
 
@@ -148,13 +148,13 @@ grid_t initTotalGrid(grid_t grid, long ncside) {
 
 grid_tt ** initGridSendReceive(int rank) {
 	grid_tt **grid;
-	grid = (grid_tt **) malloc(8*sizeof(grid_tt *));
+	grid = (grid_tt **) malloc(16*sizeof(grid_tt *));
 	if(grid == NULL) {
 		printf("ERROR malloc\n");
 		exit(0);
 	}
-	for (int i = 0; i < 4; ++i) {
-		grid[i] = (grid_tt *) malloc((params.yUpperBound-params.yLowerBound + 1)*sizeof(grid_tt));
+	for (int i = 0; i < 16; i += 4) {
+		grid[i] = (grid_tt *) malloc(params.sizeVertical*sizeof(grid_tt));
 		if(grid[i] == NULL) {
 			printf("ERROR malloc\n");
 			exit(0);
@@ -164,7 +164,7 @@ grid_tt ** initGridSendReceive(int rank) {
 			printf("ERROR malloc\n");
 			exit(0);
 		}
-		grid[i+2] = (grid_tt *) malloc((params.xUpperBound-params.xLowerBound + 1)*sizeof(grid_tt));
+		grid[i+2] = (grid_tt *) malloc(params.sizeHorizontal*sizeof(grid_tt));
 		if(grid[i+2] == NULL) {
 			printf("ERROR malloc\n");
 			exit(0);

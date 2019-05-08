@@ -45,9 +45,18 @@ typedef struct _particle_t_reduced {
 	long long number;
 	double positionX;
 	double positionY;
+	double vx;
+	double vy;
 	long gridCoordinateX;
 	long gridCoordinateY;
 } particle_t_reduced;
+
+typedef struct _particle_t_final {
+	long long number;
+	double positionX;
+	double positionY;
+} particle_t_final;
+
 
 typedef struct _grid_t{
 	double *m;
