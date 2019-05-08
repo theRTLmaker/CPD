@@ -17,7 +17,8 @@
 int main(int argc, char *argv[])
 { 
 	int rank, numberOfProcess;
-	MPI_Status status;
+	MPI_Status status; 
+	
 
 	grid_t grid;
 	grid_tt **gridSendReceive;
