@@ -2,6 +2,9 @@
 #define INIT_PROGRAM_H
 #include "physics.h"
 
+#include <mpi.h>
+
+
 #define LEFTPROCESS 0
 #define	UPLEFTPROCESS 1
 #define	UPPROCESS 2
@@ -25,6 +28,8 @@ typedef struct _parameters{
 	long yUpperBound;
 	long sizeVertical;
 	long sizeHorizontal;
+	long sizeVerticalBase;
+	long sizeHorizontalBase;
 } parameters;
 
 extern parameters params;
@@ -47,6 +52,8 @@ grid_tt ** initGridSendReceive(int rank);
 grid_t initTotalGrid(grid_t grid, long ncside);
 
 grid_t initPartialGrid(int numberOfProcess, int processID, grid_t grid);
+
+int * findNeighborsRank(int* idToSend, int rank, int numberOfProcess);
 
 void freeEverything(particle_t *par, grid_t particleGrid, long long int nside);
 
