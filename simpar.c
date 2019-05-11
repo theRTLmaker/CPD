@@ -25,26 +25,19 @@ int main(int argc, char *argv[])
 	grid_tt **gridSendReceive;
 	particle_t *par;
 	particle_t_reduced *parReceive;
-	particle_t_reduced par_aux_send;
+	particle_t_reduced **parSend;
 	long sizeParReceive;
+	long sizeParSend;
+	long parAuxX;
+	long parAuxY;
+	int parSendPos[8];
 	int count;
 
 	long k;
 	int flag, destiny;
 
-int sent = 0;
-int received = 0;
-int maxReceived = 0;
-
-	MPI_Request request;
-	MPI_Request request0;
-	MPI_Request request1;
-	MPI_Request request2;
-	MPI_Request request3;
-	MPI_Request request4;
-	MPI_Request request5;
-	MPI_Request request6;
-	MPI_Request request7;
+	MPI_Request request[8];
+	MPI_Status statuss[8];
 
 	MPI_Init( &argc, &argv );
 	MPI_Comm_size(MPI_COMM_WORLD, &numberOfProcess);
@@ -138,7 +131,9 @@ int maxReceived = 0;
 		par = CreateParticleArray(params.n_part);
 
 		parReceive =  initParReceived(params.n_part, &sizeParReceive);
-		
+
+		parSend = initParSend(params.n_part, &sizeParSend);
+
 		grid = initTotalGrid(grid, params.ncside);
 
 		gridSendReceive = initGridSendReceive(rank);
@@ -154,14 +149,6 @@ int maxReceived = 0;
 	        	par[i].number = i;
 			}
 		}	
-long long receivedFinall = 0;
-		for(long long i = 0; i < params.n_part; i++) {
-			if(par[i].number != -1) {
-				receivedFinall++;
-			}
-		}	
-
-		//printf("\trank %d receivedFinall %lld\n", rank, receivedFinall);fflush(stdout);
 
 		if((idToSend = (int *)malloc(8*sizeof(int))) == NULL) {
 			printf("ERROR malloc idToSend\n");fflush(stdout);
@@ -184,11 +171,17 @@ long long receivedFinall = 0;
 				printf("iteration %ld\n", k);fflush(stdout);
 			}
 
-			// Barreira de sincronizacao
-			if(MPI_Barrier(comm) != MPI_SUCCESS) {
-				printf( "Error on barrier on iteration %ld\n", k);fflush(stdout);
-			}
-
+			// Clear the memory position to send and receive particles
+			memset(parSend[0], 0, sizeParSend*sizeof(particle_t_reduced));
+			memset(parSend[1], 0, sizeParSend*sizeof(particle_t_reduced));
+			memset(parSend[2], 0, sizeParSend*sizeof(particle_t_reduced));
+			memset(parSend[3], 0, sizeParSend*sizeof(particle_t_reduced));
+			memset(parSend[4], 0, sizeParSend*sizeof(particle_t_reduced));
+			memset(parSend[5], 0, sizeParSend*sizeof(particle_t_reduced));
+			memset(parSend[6], 0, sizeParSend*sizeof(particle_t_reduced));
+			memset(parSend[7], 0, sizeParSend*sizeof(particle_t_reduced));
+			memset(parReceive, 0, sizeParReceive*sizeof(particle_t_reduced));
+			memset(parSendPos, 0, 8*sizeof(int));
 
 			// Run throw all the cells and resets all the center of mass
 			memset(grid.m, 0, params.gridSize*sizeof(double));
@@ -202,6 +195,7 @@ long long receivedFinall = 0;
 					MASS(par[i].gridCoordinateX, par[i].gridCoordinateY) = MASS(par[i].gridCoordinateX, par[i].gridCoordinateY) + par[i].m;
 				}
 			}
+
 			for (int i = params.yUpperBound; i >= params.yLowerBound; i--) {
 				for (int j = params.xUpperBound; j >= params.xLowerBound; j--) {
 					CENTEROFMASSX(i, j) = CENTEROFMASSX(i, j)/MASS(i, j);
@@ -219,7 +213,7 @@ long long receivedFinall = 0;
 				gridSendReceive[RIGHTPROCESS][pos].centerOfMassY = CENTEROFMASSY(i, params.xUpperBound);
 				gridSendReceive[RIGHTPROCESS][pos++].m = MASS(i, params.xUpperBound);
 			}
-			
+
 			pos = 0;
 			for (int j = params.xUpperBound; j >= params.xLowerBound; j--) {
 				gridSendReceive[UPPROCESS][pos].centerOfMassX = CENTEROFMASSX(params.yUpperBound, j);
@@ -229,6 +223,7 @@ long long receivedFinall = 0;
 				gridSendReceive[DOWNPROCESS][pos].centerOfMassY = CENTEROFMASSY(params.yLowerBound, j);
 				gridSendReceive[DOWNPROCESS][pos++].m = MASS(params.yLowerBound, j);
 			}
+		
 			gridSendReceive[UPLEFTPROCESS][0].centerOfMassX = CENTEROFMASSX(params.yUpperBound, params.xLowerBound);
 			gridSendReceive[UPLEFTPROCESS][0].centerOfMassY = CENTEROFMASSY(params.yUpperBound, params.xLowerBound);
 			gridSendReceive[UPLEFTPROCESS][0].m = MASS(params.yUpperBound, params.xLowerBound);
@@ -248,37 +243,27 @@ long long receivedFinall = 0;
 			
 
 			// Envia os centros de massa das fronteiras e recebe das regiões vizinhas
-			MPI_Irecv(gridSendReceive[8], params.sizeVertical, mpi_grid_t, idToSend[0], SENDCENTER,comm, &request0);
-			MPI_Irecv(gridSendReceive[9], 1, mpi_grid_t, idToSend[1], SENDCENTER,comm, &request1);
-			MPI_Irecv(gridSendReceive[10], params.sizeHorizontal, mpi_grid_t, idToSend[2], SENDCENTER,comm, &request2);
-			MPI_Irecv(gridSendReceive[11], 1, mpi_grid_t, idToSend[3], SENDCENTER,comm, &request3);
-			MPI_Irecv(gridSendReceive[12], params.sizeVertical, mpi_grid_t, idToSend[4], SENDCENTER,comm, &request4);
-			MPI_Irecv(gridSendReceive[13], 1, mpi_grid_t, idToSend[5], SENDCENTER,comm, &request5);
-			MPI_Irecv(gridSendReceive[14], params.sizeHorizontal, mpi_grid_t, idToSend[6], SENDCENTER,comm, &request6);
-			MPI_Irecv(gridSendReceive[15], 1, mpi_grid_t, idToSend[7], SENDCENTER,comm, &request7);
-			
-			MPI_Send(gridSendReceive[1], 1, mpi_grid_t, idToSend[1], 0, comm);
+			MPI_Irecv(gridSendReceive[8], params.sizeVertical, mpi_grid_t, idToSend[0], SENDCENTER,comm, &request[0]);
+			MPI_Irecv(gridSendReceive[9], 1, mpi_grid_t, idToSend[1], SENDCENTER,comm, &request[1]);
+			MPI_Irecv(gridSendReceive[10], params.sizeHorizontal, mpi_grid_t, idToSend[2], SENDCENTER,comm, &request[2]);
+			MPI_Irecv(gridSendReceive[11], 1, mpi_grid_t, idToSend[3], SENDCENTER,comm, &request[3]);
+			MPI_Irecv(gridSendReceive[12], params.sizeVertical, mpi_grid_t, idToSend[4], SENDCENTER,comm, &request[4]);
+			MPI_Irecv(gridSendReceive[13], 1, mpi_grid_t, idToSend[5], SENDCENTER,comm, &request[5]);
+			MPI_Irecv(gridSendReceive[14], params.sizeHorizontal, mpi_grid_t, idToSend[6], SENDCENTER,comm, &request[6]);
+			MPI_Irecv(gridSendReceive[15], 1, mpi_grid_t, idToSend[7], SENDCENTER,comm, &request[7]);
+		
 			MPI_Send(gridSendReceive[0], params.sizeVertical, mpi_grid_t, idToSend[0], 0, comm);
+			MPI_Send(gridSendReceive[1], 1, mpi_grid_t, idToSend[1], 0, comm);
 			MPI_Send(gridSendReceive[2], params.sizeHorizontal, mpi_grid_t, idToSend[2], 0, comm);
 			MPI_Send(gridSendReceive[3], 1, mpi_grid_t, idToSend[3], 0, comm);
 			MPI_Send(gridSendReceive[4], params.sizeVertical, mpi_grid_t, idToSend[4], 0, comm);
 			MPI_Send(gridSendReceive[6], params.sizeHorizontal, mpi_grid_t, idToSend[6], 0, comm);
 			MPI_Send(gridSendReceive[5], 1, mpi_grid_t, idToSend[5], 0, comm);
 			MPI_Send(gridSendReceive[7], 1, mpi_grid_t, idToSend[7], 0, comm);
-			
-			MPI_Wait(&request0, &status);
-			MPI_Wait(&request1, &status);
-			MPI_Wait(&request2, &status);
-			MPI_Wait(&request3, &status);
-			MPI_Wait(&request4, &status);
-			MPI_Wait(&request5, &status);
-			MPI_Wait(&request6, &status);
-			MPI_Wait(&request7, &status);
 
-			// Barreira de sincronizacao
-			if(MPI_Barrier(comm) != MPI_SUCCESS) {
-				printf( "Error on barrier on iteration %ld\n", k);fflush(stdout);
-			}
+			MPI_Waitall(8, request, statuss);
+
+
 
 			// Updates the new values of the center of mass
 			pos = 0;
@@ -373,8 +358,8 @@ long long receivedFinall = 0;
 					par[i].positionX += par[i].vx + 0.5 * par[i].appliedForceX * invM;//x = x0 + v0t + 0.5 a t^2 (t = 1)
 					par[i].positionY += par[i].vy + 0.5 * par[i].appliedForceY * invM;
 
-					par_aux_send.gridCoordinateX = par[i].positionX * params.ncside;
-		            par_aux_send.gridCoordinateY = par[i].positionY * params.ncside;
+					parAuxX = par[i].positionX * params.ncside;
+		            parAuxY = par[i].positionY * params.ncside;
 
 					//See if its out of bounds
 					if(par[i].positionX >= 1) par[i].positionX = par[i].positionX - (int)(par[i].positionX);
@@ -390,42 +375,46 @@ long long receivedFinall = 0;
 					// Verificar se particula ficou fora da área de trabalho
 					if(par[i].gridCoordinateX < params.xLowerBound || par[i].gridCoordinateX > params.xUpperBound || 
 						par[i].gridCoordinateY < params.yLowerBound || par[i].gridCoordinateY > params.yUpperBound) {
-						par_aux_send.number = par[i].number;
-			            par_aux_send.positionX = par[i].positionX;
-			            par_aux_send.positionY = par[i].positionY;
-			            par_aux_send.vx = par[i].vx;
-			            par_aux_send.vy = par[i].vy;
-
-						if(par_aux_send.gridCoordinateX < params.xLowerBound) {
-							if(par_aux_send.gridCoordinateY < params.yLowerBound)
-								destiny = idToSend[7];
-							else if(par_aux_send.gridCoordinateY > params.yUpperBound)
-								destiny = idToSend[5];
+						if(parAuxX < params.xLowerBound) {
+							if(parAuxY < params.yLowerBound)
+								destiny = 7;
+							else if(parAuxY > params.yUpperBound)
+								destiny = 5;
 							else
-								destiny = idToSend[0];
+								destiny = 0;
 						}
-						else if(par_aux_send.gridCoordinateX > params.xUpperBound) {
-							if(par_aux_send.gridCoordinateY < params.yLowerBound)
-								destiny = idToSend[5];
-							else if(par_aux_send.gridCoordinateY > params.yUpperBound)
-								destiny = idToSend[3];
+						else if(parAuxX > params.xUpperBound) {
+							if(parAuxY < params.yLowerBound)
+								destiny = 5;
+							else if(parAuxY > params.yUpperBound)
+								destiny = 3;
 							else
-								destiny = idToSend[4];
+								destiny = 4;
 						}
 						else{
-							if(par_aux_send.gridCoordinateY < params.yLowerBound)
-								destiny = idToSend[6];
+							if(parAuxY < params.yLowerBound)
+								destiny = 6;
 							else
-								destiny = idToSend[2];
+								destiny = 2;
 						}
 
-			            par_aux_send.gridCoordinateX = par[i].gridCoordinateX;
-			            par_aux_send.gridCoordinateY = par[i].gridCoordinateY;
-			            MPI_Send(&par_aux_send, 1, mpi_particle_t_reduced, destiny, 2, comm);
+						parSend[destiny][parSendPos[destiny]].number = par[i].number;
+			            parSend[destiny][parSendPos[destiny]].positionX = par[i].positionX;
+			        	parSend[destiny][parSendPos[destiny]].positionY = par[i].positionY;
+			            parSend[destiny][parSendPos[destiny]].vx = par[i].vx;
+			            parSend[destiny][parSendPos[destiny]].vy = par[i].vy;
+			            parSend[destiny][parSendPos[destiny]].gridCoordinateX = par[i].gridCoordinateX;
+			            parSend[destiny][parSendPos[destiny]++].gridCoordinateY = par[i].gridCoordinateY;
+			            
 						par[i].number = -1;
-						sent++;
-						//printf("rank %d x=%ld, y=%ld -> %d\n", rank, par[i].gridCoordinateX, par[i].gridCoordinateY, destiny);fflush(stdout);
 					}
+				}
+			}
+			
+			// Send the particles
+			for (int i = 0; i < 8; ++i) {
+				if(parSendPos[i] != 0) {
+					MPI_Isend(parSend[i], parSendPos[i], mpi_particle_t_reduced, idToSend[i], 2 , comm, &request[i]);
 				}
 			}
 
@@ -433,16 +422,15 @@ long long receivedFinall = 0;
 			if(MPI_Barrier(comm) != MPI_SUCCESS) {
 				printf( "Error on barrier on iteration %ld\n", k);fflush(stdout);
 			}
- received = 0;
+
  			for (int i = 0; i < 8; ++i) {
 	 			do{	
 		 			MPI_Iprobe(idToSend[i], 2, comm, &flag, &status);
 					if(flag) { 
 		            	MPI_Recv(parReceive, sizeParReceive, mpi_particle_t_reduced, idToSend[i], 2, comm, &status);
 		            	MPI_Get_count(&status, mpi_particle_t_reduced, &count);
-		            	printf("rank %d count %d, Message source = %d, tag = %d\n", rank, count, status.MPI_SOURCE, status.MPI_TAG);fflush(stdout);
 		            	for (int i = 0; i < count; ++i){
-			            	par[parReceive[i].number].number = parReceive[i].number;
+		            		par[parReceive[i].number].number = parReceive[i].number;
 			            	par[parReceive[i].number].positionX = parReceive[i].positionX;
 			            	par[parReceive[i].number].positionY = parReceive[i].positionY;
 			            	par[parReceive[i].number].vx = parReceive[i].vx;
@@ -450,16 +438,17 @@ long long receivedFinall = 0;
 			            	par[parReceive[i].number].gridCoordinateX = parReceive[i].gridCoordinateX;
 			            	par[parReceive[i].number].gridCoordinateY = parReceive[i].gridCoordinateY;
 		            	}
-						received++;
 					}
 				}while(flag);
 			}
-			if(received > maxReceived) maxReceived = received;
-		}
 
-		printf("\t%ld rank %d -> sent %d, received %d\n", k, rank, sent, maxReceived);fflush(stdout);
-long long sentFinal = 0;
-long long receivedFinal = 0;
+			for (int i = 0; i < 8; ++i) {
+				if(parSendPos[i] != 0) {
+					MPI_Wait(&request[i], MPI_STATUS_IGNORE);
+				}
+			}
+		}
+		
 		particle_t_final particle_recv;
 		if(rank != 0) {
 			for(long long i = 0; i < params.n_part; i++) {
@@ -468,30 +457,18 @@ long long receivedFinal = 0;
 					particle_recv.positionX = par[i].positionX;
 					particle_recv.positionY = par[i].positionY;
 					MPI_Send(&particle_recv, 1, mpi_particle_t, 0, 3, comm);
-					sentFinal++;
 				}
 			}
-			//printf("-rank %d -> sent %lld\n", rank, sentFinal);fflush(stdout);
-			//printf("\t\t\trank: %d -> Send ALL -> max %lld\n", rank, max);fflush(stdout);
 		}
 		else {
-			for(long long i = 0; i < params.n_part; i++) {
-				if(par[i].number == -1) {
-					receivedFinal++;
-				}
-			}
-			//printf("received %lld\n", receivedFinal);fflush(stdout);
 			for(long long i = 0; i < params.n_part; i++) {
 				if(par[i].number == -1) {
 					MPI_Recv(&particle_recv, 1, mpi_particle_t, MPI_ANY_SOURCE, 3, comm, &status);
 					par[particle_recv.number].positionX = particle_recv.positionX;
 					par[particle_recv.number].positionY = particle_recv.positionY;
-					receivedFinal++;
-					//printf("received %lld\n", receivedFinal);fflush(stdout);
 				}
 			}
 
-			//printf("\tFINAL-rank %d\n", rank);fflush(stdout);
 			// Computes the total center of mass
 			double centerOfMassX = 0;
 			double centerOfMassY = 0;

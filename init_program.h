@@ -59,4 +59,6 @@ void freeEverything(particle_t *par, grid_t particleGrid, long long int nside);
 
 particle_t_reduced * initParReceived(long long n_part, long *size);
 
+particle_t_reduced ** initParSend(long long n_part, long *size);
+
 #endif
