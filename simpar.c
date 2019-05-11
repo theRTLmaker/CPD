@@ -16,7 +16,8 @@
 
 int main(int argc, char *argv[])
 { 
-	int rank, numberOfProcess;
+	int rank, numberOfProcess, namelen, id, nt;
+	char processor_name[MPI_MAX_PROCESSOR_NAME];
 	MPI_Status status; 
 	MPI_Comm comm; 
 	int *idToSend;
@@ -42,6 +43,7 @@ int main(int argc, char *argv[])
 	MPI_Init( &argc, &argv );
 	MPI_Comm_size(MPI_COMM_WORLD, &numberOfProcess);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank );
+	MPI_Get_processor_name(processor_name, &namelen);
 
 	// Criação de estrutura particula para enviar em MPI
 	const int nitemsPartcomplete = 10;
@@ -143,14 +145,17 @@ int main(int argc, char *argv[])
 		// Inicia as particulas e descobre a sua posicao na grelha (pode ser paralelizado a descoberta )
 		init_particles(par);
 		
-		// Ativam as particulas que lhes pertencem
-		for(long long i = params.n_part - 1; i >= 0; i = i - 1) {
-			if(par[i].gridCoordinateX >= params.xLowerBound && par[i].gridCoordinateX <= params.xUpperBound && 
-			   par[i].gridCoordinateY >= params.yLowerBound && par[i].gridCoordinateY <= params.yUpperBound) {
-	        	par[i].number = i;
-			}
-		}	
-
+		#pragma omp parallel
+		{
+			#pragma omp for
+			// Ativam as particulas que lhes pertencem
+			for(long long i = params.n_part - 1; i >= 0; i = i - 1) {
+				if(par[i].gridCoordinateX >= params.xLowerBound && par[i].gridCoordinateX <= params.xUpperBound && 
+				   par[i].gridCoordinateY >= params.yLowerBound && par[i].gridCoordinateY <= params.yUpperBound) {
+		        	par[i].number = i;
+				}
+			}	
+		}
 		if((idToSend = (int *)malloc(8*sizeof(int))) == NULL) {
 			printf("ERROR malloc idToSend\n");fflush(stdout);
 			exit(0);
@@ -189,21 +194,24 @@ int main(int argc, char *argv[])
 			memset(grid.centerOfMassX, 0, params.gridSize*sizeof(double));
 			memset(grid.centerOfMassY, 0, params.gridSize*sizeof(double));
 
-			for(int i = params.n_part - 1; i >= 0; i = i - 1) {
-				if(par[i].number >= 0) {
-					CENTEROFMASSX(par[i].gridCoordinateX, par[i].gridCoordinateY) = CENTEROFMASSX(par[i].gridCoordinateX, par[i].gridCoordinateY) + par[i].m * par[i].positionX;
-					CENTEROFMASSY(par[i].gridCoordinateX, par[i].gridCoordinateY) = CENTEROFMASSY(par[i].gridCoordinateX, par[i].gridCoordinateY) + par[i].m * par[i].positionY;
-					MASS(par[i].gridCoordinateX, par[i].gridCoordinateY) = MASS(par[i].gridCoordinateX, par[i].gridCoordinateY) + par[i].m;
+			#pragma omp parallel
+			{
+				for(int i = params.n_part - 1; i >= 0; i = i - 1) {
+					if(par[i].number >= 0) {
+						CENTEROFMASSX(par[i].gridCoordinateX, par[i].gridCoordinateY) = CENTEROFMASSX(par[i].gridCoordinateX, par[i].gridCoordinateY) + par[i].m * par[i].positionX;
+						CENTEROFMASSY(par[i].gridCoordinateX, par[i].gridCoordinateY) = CENTEROFMASSY(par[i].gridCoordinateX, par[i].gridCoordinateY) + par[i].m * par[i].positionY;
+						MASS(par[i].gridCoordinateX, par[i].gridCoordinateY) = MASS(par[i].gridCoordinateX, par[i].gridCoordinateY) + par[i].m;
+					}
+				}
+
+				for (int i = params.yUpperBound; i >= params.yLowerBound; i = i - 1) {
+					for (int j = params.xUpperBound; j >= params.xLowerBound; j = j - 1) {
+						CENTEROFMASSX(i, j) = CENTEROFMASSX(i, j)/MASS(i, j);
+						CENTEROFMASSY(i, j) = CENTEROFMASSY(i, j)/MASS(i, j);
+					}
 				}
 			}
-
-			for (int i = params.yUpperBound; i >= params.yLowerBound; i = i - 1) {
-				for (int j = params.xUpperBound; j >= params.xLowerBound; j = j - 1) {
-					CENTEROFMASSX(i, j) = CENTEROFMASSX(i, j)/MASS(i, j);
-					CENTEROFMASSY(i, j) = CENTEROFMASSY(i, j)/MASS(i, j);
-				}
-			}
-
+			
 			pos = 0;
 			// Copies the center of mass to be transmmited
 			for (int i = params.yUpperBound; i >= params.yLowerBound; i = i - 1) {
@@ -309,6 +317,8 @@ int main(int argc, char *argv[])
 			double invM;
 			int sideUPDOWN;
 			int sideLEFTRIGHT;
+
+			#pragma omp for 
 			for(int i = params.n_part - 1; i >= 0; i = i - 1){
 				if(par[i].number >= 0) {
 					par[i].appliedForceX = 0;
@@ -448,6 +458,8 @@ int main(int argc, char *argv[])
 					MPI_Wait(&request[i], MPI_STATUS_IGNORE);
 				}
 			}
+
+			
 		}
 
 		particle_t_final particle_recv;
