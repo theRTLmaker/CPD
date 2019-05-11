@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
 		init_particles(par);
 		
 		// Ativam as particulas que lhes pertencem
-		for(int i = 0; i < params.n_part; i++) {
+		for(long long i = params.n_part - 1; i >= 0; i = i - 1) {
 			if(par[i].gridCoordinateX >= params.xLowerBound && par[i].gridCoordinateX <= params.xUpperBound && 
 			   par[i].gridCoordinateY >= params.yLowerBound && par[i].gridCoordinateY <= params.yUpperBound) {
 	        	par[i].number = i;
@@ -197,8 +197,8 @@ int main(int argc, char *argv[])
 				}
 			}
 
-			for (int i = params.yUpperBound; i >= params.yLowerBound; i--) {
-				for (int j = params.xUpperBound; j >= params.xLowerBound; j--) {
+			for (int i = params.yUpperBound; i >= params.yLowerBound; i = i - 1) {
+				for (int j = params.xUpperBound; j >= params.xLowerBound; j = j - 1) {
 					CENTEROFMASSX(i, j) = CENTEROFMASSX(i, j)/MASS(i, j);
 					CENTEROFMASSY(i, j) = CENTEROFMASSY(i, j)/MASS(i, j);
 				}
@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
 
 			pos = 0;
 			// Copies the center of mass to be transmmited
-			for (int i = params.yUpperBound; i >= params.yLowerBound; i--) {
+			for (int i = params.yUpperBound; i >= params.yLowerBound; i = i - 1) {
 				gridSendReceive[LEFTPROCESS][pos].centerOfMassX = CENTEROFMASSX(i, params.xLowerBound);
 				gridSendReceive[LEFTPROCESS][pos].centerOfMassY = CENTEROFMASSY(i, params.xLowerBound);
 				gridSendReceive[LEFTPROCESS][pos].m = MASS(i, params.xLowerBound);
@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
 			}
 
 			pos = 0;
-			for (int j = params.xUpperBound; j >= params.xLowerBound; j--) {
+			for (int j = params.xUpperBound; j >= params.xLowerBound; j = j- 1) {
 				gridSendReceive[UPPROCESS][pos].centerOfMassX = CENTEROFMASSX(params.yUpperBound, j);
 				gridSendReceive[UPPROCESS][pos].centerOfMassY = CENTEROFMASSY(params.yUpperBound, j);
 				gridSendReceive[UPPROCESS][pos].m = MASS(params.yUpperBound, j);
@@ -268,7 +268,7 @@ int main(int argc, char *argv[])
 
 			// Updates the new values of the center of mass
 			pos = 0;
-			for (int i = params.yUpperBound; i >= params.yLowerBound; i--) {
+			for (int i = params.yUpperBound; i >= params.yLowerBound; i = i - 1) {
 				CENTEROFMASSX(i, params.xLowerBound) = gridSendReceive[LEFTPROCESS + 8][pos].centerOfMassX;
 				CENTEROFMASSY(i, params.xLowerBound) = gridSendReceive[LEFTPROCESS + 8][pos].centerOfMassY;
 				MASS(i, params.xLowerBound) = gridSendReceive[LEFTPROCESS + 8][pos].m;
@@ -278,7 +278,7 @@ int main(int argc, char *argv[])
 			}
 			
 			pos = 0;
-			for (int j = params.xUpperBound; j >= params.xLowerBound; j--) {
+			for (int j = params.xUpperBound; j >= params.xLowerBound; j = j - 1) {
 				CENTEROFMASSX(params.yUpperBound, j) = gridSendReceive[UPPROCESS + 8][pos].centerOfMassX;
 				CENTEROFMASSY(params.yUpperBound, j) = gridSendReceive[UPPROCESS + 8][pos].centerOfMassY;
 				MASS(params.yUpperBound, j) = gridSendReceive[UPPROCESS + 8][pos].m;
@@ -452,13 +452,16 @@ int main(int argc, char *argv[])
 
 		particle_t_final particle_recv;
 		if(rank != 0) {
-			for(long long i = 0; i < params.n_part; i++) {
+			for(long long i = params.n_part - 1; i >= 0; i = i - 1) {
 				if(par[i].number != -1) {
 					particle_recv.number = par[i].number;
 					particle_recv.positionX = par[i].positionX;
 					particle_recv.positionY = par[i].positionY;
 					particle_recv.m = par[i].m;
 					MPI_Send(&particle_recv, 1, mpi_particle_t, 0, 3, comm);
+					if(par[i].number == 0) {
+						printf("%.2f %.2f\n", par[i].positionX, par[i].positionY);fflush(stdout);
+					}
 				}
 			}
 		}
@@ -469,7 +472,7 @@ int main(int argc, char *argv[])
 			double totalMass = 0;
 
 			// Calculates the center of mass of all cells
-			for(long long i = 0; i < params.n_part; i++) {
+			for(long long i = params.n_part - 1; i >= 0; i = i - 1) {
 				if(par[i].number == -1) {
 					MPI_Recv(&particle_recv, 1, mpi_particle_t, MPI_ANY_SOURCE, 3, comm, &status);
 					par[i].positionX = particle_recv.positionX;
@@ -484,7 +487,9 @@ int main(int argc, char *argv[])
 			// prints the information
 			centerOfMassX = centerOfMassX / totalMass;
 			centerOfMassY = centerOfMassY / totalMass;
-			printf("%.2f %.2f\n", par[0].positionX, par[0].positionY);
+			if(par[0].number == 0) { 
+				printf("%.2f %.2f\n", par[0].positionX, par[0].positionY);fflush(stdout);
+			}
 			printf("%.2f %.2f\n", centerOfMassX, centerOfMassY);
 	    }
 	}
