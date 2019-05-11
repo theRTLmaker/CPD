@@ -271,6 +271,18 @@ void freeEverything(particle_t *par, grid_t particleGrid, long long nside){
 	return;
 }
 
-	
+particle_t_reduced initParReceived(long long n_part, long *size) {
+	particle_t_reduced *par;
+
+	if(n_part <= 500) *size = n_part/ 2;
+	else *size = n_part/ 10;
+	par = (particle_t_reduced *)malloc((*size)*sizeof(particle_t_reduced));
+	if(par == NULL) {
+		printf("ERROR malloc Par Received \n", i);fflush(stdout);
+		exit(0);
+	}
+
+	return
+}	
 
 	
