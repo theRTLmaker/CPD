@@ -95,9 +95,9 @@ int findGridDivision(int numberOfProcess, int rank) {
 	params.sizeVertical = params.ncside / params.ySize;
 	long sizeVerticalrest = params.ncside % params.ySize;
 
-	if(rank == 0) {
+	/*if(rank == 0) {
 		printf("nr proc: %d, x: %ld, y: %ld, x*y = %ld\nsizeVertical: %ld sizeVerticalrest: %ld, sizeHorizontal: %ld sizeHorizontalrest: %ld\n\n", numberOfProcess, params.xSize, params.ySize,  params.xSize * params.ySize, params.sizeVertical, sizeVerticalrest, params.sizeHorizontal, sizeHorizontalrest);fflush(stdout);
-	}
+	}*/
 
 	params.sizeHorizontalBase = params.sizeHorizontal + (sizeHorizontalrest > 0);
 	params.sizeVerticalBase = params.sizeVertical + (sizeVerticalrest > 0);
@@ -123,7 +123,7 @@ int findGridDivision(int numberOfProcess, int rank) {
 	
 	params.yUpperBound = params.yLowerBound + params.sizeVertical - 1;
 
-	printf("rank %d\nxmin: %ld, xmax: %ld\nymin: %ld, ymax: %ld\nsizeVertical: %ld, sizeHorizontal: %ld\n\n", rank, params.xLowerBound, params.xUpperBound, params.yLowerBound, params.yUpperBound, params.sizeVertical, params.sizeHorizontal);fflush(stdout);
+	//printf("rank %d\nxmin: %ld, xmax: %ld\nymin: %ld, ymax: %ld\nsizeVertical: %ld, sizeHorizontal: %ld\n\n", rank, params.xLowerBound, params.xUpperBound, params.yLowerBound, params.yUpperBound, params.sizeVertical, params.sizeHorizontal);fflush(stdout);
 
 	return numberOfProcess;
 }
@@ -271,18 +271,18 @@ void freeEverything(particle_t *par, grid_t particleGrid, long long nside){
 	return;
 }
 
-particle_t_reduced initParReceived(long long n_part, long *size) {
+particle_t_reduced * initParReceived(long long n_part, long *size) {
 	particle_t_reduced *par;
 
-	if(n_part <= 500) *size = n_part/ 2;
+	if(n_part <= 500) *size = n_part;
 	else *size = n_part/ 10;
 	par = (particle_t_reduced *)malloc((*size)*sizeof(particle_t_reduced));
 	if(par == NULL) {
-		printf("ERROR malloc Par Received \n", i);fflush(stdout);
+		printf("ERROR malloc Par Received\n");fflush(stdout);
 		exit(0);
 	}
 
-	return
+	return(par);
 }	
 
 	

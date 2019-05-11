@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
 	particle_t_reduced *parReceive;
 	particle_t_reduced par_aux_send;
 	long sizeParReceive;
+	int count;
 
 	long k;
 	int flag, destiny;
@@ -136,7 +137,7 @@ int maxReceived = 0;
 	if(rank < numberOfProcess) {
 		par = CreateParticleArray(params.n_part);
 
-		parReceive =  initParReceived(params.n_part, &sizeParReceive)
+		parReceive =  initParReceived(params.n_part, &sizeParReceive);
 		
 		grid = initTotalGrid(grid, params.ncside);
 
@@ -179,7 +180,9 @@ long long receivedFinall = 0;
 		// Time Step simulation
 		for (k = 0; k < params.timeStep; k++) {
 
-			printf("iteration %ld\n", k);fflush(stdout);
+			if(rank == 0) {
+				printf("iteration %ld\n", k);fflush(stdout);
+			}
 
 			// Barreira de sincronizacao
 			if(MPI_Barrier(comm) != MPI_SUCCESS) {
@@ -431,24 +434,25 @@ long long receivedFinall = 0;
 				printf( "Error on barrier on iteration %ld\n", k);fflush(stdout);
 			}
  received = 0;
-
- 
-			for (long i = 0; i < 8; ++i) {
-				flag = 1;
-				while(flag) {	
-					MPI_Iprobe(idToSend[i], 2, comm,&flag, &status);
+ 			for (int i = 0; i < 8; ++i) {
+	 			do{	
+		 			MPI_Iprobe(idToSend[i], 2, comm, &flag, &status);
 					if(flag) { 
-		            	MPI_Recv(&par_aux, 1, mpi_particle_t_reduced, idToSend[i], 2, comm, &status);
-		            	par[par_aux.number].number = par_aux.number;
-		            	par[par_aux.number].positionX = par_aux.positionX;
-		            	par[par_aux.number].positionY = par_aux.positionY;
-		            	par[par_aux.number].vx = par_aux.vx;
-		            	par[par_aux.number].vy = par_aux.vy;
-		            	par[par_aux.number].gridCoordinateX = par_aux.gridCoordinateX;
-		            	par[par_aux.number].gridCoordinateY = par_aux.gridCoordinateY;
+		            	MPI_Recv(parReceive, sizeParReceive, mpi_particle_t_reduced, idToSend[i], 2, comm, &status);
+		            	MPI_Get_count(&status, mpi_particle_t_reduced, &count);
+		            	printf("rank %d count %d, Message source = %d, tag = %d\n", rank, count, status.MPI_SOURCE, status.MPI_TAG);fflush(stdout);
+		            	for (int i = 0; i < count; ++i){
+			            	par[parReceive[i].number].number = parReceive[i].number;
+			            	par[parReceive[i].number].positionX = parReceive[i].positionX;
+			            	par[parReceive[i].number].positionY = parReceive[i].positionY;
+			            	par[parReceive[i].number].vx = parReceive[i].vx;
+			            	par[parReceive[i].number].vy = parReceive[i].vy;
+			            	par[parReceive[i].number].gridCoordinateX = parReceive[i].gridCoordinateX;
+			            	par[parReceive[i].number].gridCoordinateY = parReceive[i].gridCoordinateY;
+		            	}
 						received++;
 					}
-				}
+				}while(flag);
 			}
 			if(received > maxReceived) maxReceived = received;
 		}
@@ -472,7 +476,7 @@ long long receivedFinal = 0;
 		}
 		else {
 			for(long long i = 0; i < params.n_part; i++) {
-				if(par[i].number != -1) {
+				if(par[i].number == -1) {
 					receivedFinal++;
 				}
 			}
