@@ -75,14 +75,15 @@ int main(int argc, char *argv[])
 	MPI_Type_commit(&mpi_particle_t_complete);
 
 	// Criação de estrutura particula para enviar em MPI
-	const int nitemsPart = 3;
-	MPI_Aint displacementsPart[3] = {	offsetof(particle_t_reduced, number), 
-										offsetof(particle_t_reduced, positionX), 
-										offsetof(particle_t_reduced, positionY)
+	const int nitemsPart = 4;
+	MPI_Aint displacementsPart[4] = {	offsetof(particle_t_final, number), 
+										offsetof(particle_t_final, positionX), 
+										offsetof(particle_t_final, positionY),
+										offsetof(particle_t_final, m)
 									};
 
-	int block_lengthsPart[3]  = {1, 1, 1};
-	MPI_Datatype typesPart[3] = {MPI_LONG_LONG_INT, MPI_DOUBLE, MPI_DOUBLE};
+	int block_lengthsPart[4]  = {1, 1, 1, 1};
+	MPI_Datatype typesPart[4] = {MPI_LONG_LONG_INT, MPI_DOUBLE, MPI_DOUBLE, MPI_FLOAT};
 	MPI_Datatype mpi_particle_t;
 	MPI_Type_create_struct(nitemsPart, block_lengthsPart, displacementsPart, 
 							typesPart, &mpi_particle_t);
@@ -165,7 +166,7 @@ int main(int argc, char *argv[])
 		
 		int pos = 0;
 		// Time Step simulation
-		for (k = 0; k < params.timeStep; k++) {
+		for(k = params.timeStep; k > 0; k = k - 1) {
 
 			if(rank == 0) {
 				printf("iteration %ld\n", k);fflush(stdout);
@@ -188,7 +189,7 @@ int main(int argc, char *argv[])
 			memset(grid.centerOfMassX, 0, params.gridSize*sizeof(double));
 			memset(grid.centerOfMassY, 0, params.gridSize*sizeof(double));
 
-			for(int i = params.n_part - 1; i >= 0; i--) {
+			for(int i = params.n_part - 1; i >= 0; i = i - 1) {
 				if(par[i].number >= 0) {
 					CENTEROFMASSX(par[i].gridCoordinateX, par[i].gridCoordinateY) = CENTEROFMASSX(par[i].gridCoordinateX, par[i].gridCoordinateY) + par[i].m * par[i].positionX;
 					CENTEROFMASSY(par[i].gridCoordinateX, par[i].gridCoordinateY) = CENTEROFMASSY(par[i].gridCoordinateX, par[i].gridCoordinateY) + par[i].m * par[i].positionY;
@@ -412,7 +413,7 @@ int main(int argc, char *argv[])
 			}
 			
 			// Send the particles
-			for (int i = 0; i < 8; ++i) {
+			for(int i = 0; i < 8; ++i) {
 				if(parSendPos[i] != 0) {
 					MPI_Isend(parSend[i], parSendPos[i], mpi_particle_t_reduced, idToSend[i], 2 , comm, &request[i]);
 				}
@@ -448,7 +449,7 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
-		
+
 		particle_t_final particle_recv;
 		if(rank != 0) {
 			for(long long i = 0; i < params.n_part; i++) {
@@ -456,19 +457,12 @@ int main(int argc, char *argv[])
 					particle_recv.number = par[i].number;
 					particle_recv.positionX = par[i].positionX;
 					particle_recv.positionY = par[i].positionY;
+					particle_recv.m = par[i].m;
 					MPI_Send(&particle_recv, 1, mpi_particle_t, 0, 3, comm);
 				}
 			}
 		}
 		else {
-			for(long long i = 0; i < params.n_part; i++) {
-				if(par[i].number == -1) {
-					MPI_Recv(&particle_recv, 1, mpi_particle_t, MPI_ANY_SOURCE, 3, comm, &status);
-					par[particle_recv.number].positionX = particle_recv.positionX;
-					par[particle_recv.number].positionY = particle_recv.positionY;
-				}
-			}
-
 			// Computes the total center of mass
 			double centerOfMassX = 0;
 			double centerOfMassY = 0;
@@ -476,6 +470,12 @@ int main(int argc, char *argv[])
 
 			// Calculates the center of mass of all cells
 			for(long long i = 0; i < params.n_part; i++) {
+				if(par[i].number == -1) {
+					MPI_Recv(&particle_recv, 1, mpi_particle_t, MPI_ANY_SOURCE, 3, comm, &status);
+					par[i].positionX = particle_recv.positionX;
+					par[i].positionY = particle_recv.positionY;
+					par[i].m = particle_recv.m;
+				}
 				centerOfMassX = centerOfMassX + par[i].m * par[i].positionX;
 				centerOfMassY = centerOfMassY + par[i].m * par[i].positionY;
 				totalMass = totalMass + par[i].m;

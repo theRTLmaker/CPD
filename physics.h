@@ -55,6 +55,7 @@ typedef struct _particle_t_final {
 	long long number;
 	double positionX;
 	double positionY;
+	float m;
 } particle_t_final;
 
 
