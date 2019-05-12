@@ -9,6 +9,7 @@
 #include <stddef.h>
 
 #include <mpi.h>
+#include <omp.h>
 
 #define SENDCENTER 0
 
@@ -16,7 +17,7 @@
 
 int main(int argc, char *argv[])
 { 
-	int rank, numberOfProcess, namelen, id, nt;
+	int rank, numberOfProcess, namelen;
 	char processor_name[MPI_MAX_PROCESSOR_NAME];
 	MPI_Status status; 
 	MPI_Comm comm; 
@@ -33,6 +34,7 @@ int main(int argc, char *argv[])
 	long parAuxY;
 	int parSendPos[8];
 	int count;
+	int provided;
 
 	long k;
 	int flag, destiny;
@@ -40,7 +42,7 @@ int main(int argc, char *argv[])
 	MPI_Request request[8];
 	MPI_Status statuss[8];
 
-	MPI_Init( &argc, &argv );
+	MPI_Init_thread( &argc, &argv, 2, &provided);
 	MPI_Comm_size(MPI_COMM_WORLD, &numberOfProcess);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank );
 	MPI_Get_processor_name(processor_name, &namelen);
@@ -164,8 +166,8 @@ int main(int argc, char *argv[])
 		idToSend = findNeighborsRank(idToSend, rank, numberOfProcess);
 
 
-		/*printf("rank %d:\n%d - %d - %d\n%d -   - %d\n%d - %d - %d\n", rank, idToSend[1],
-            idToSend[2], idToSend[3], idToSend[0], idToSend[4], idToSend[7], idToSend[6], idToSend[5]);fflush(stdout);*/
+		printf("rank %d:\n%d - %d - %d\n%d -   - %d\n%d - %d - %d\n", rank, idToSend[1],
+            idToSend[2], idToSend[3], idToSend[0], idToSend[4], idToSend[7], idToSend[6], idToSend[5]);fflush(stdout);
 
 		
 		
@@ -174,7 +176,7 @@ int main(int argc, char *argv[])
 		for(k = params.timeStep; k > 0; k = k - 1) {
 
 			if(rank == 0) {
-				printf("iteration %ld\n", k);fflush(stdout);
+				printf("iteration %ld\n", k); fflush(stdout);
 			}
 
 			// Clear the memory position to send and receive particles
@@ -196,6 +198,7 @@ int main(int argc, char *argv[])
 
 			#pragma omp parallel
 			{
+				#pragma omp for
 				for(int i = params.n_part - 1; i >= 0; i = i - 1) {
 					if(par[i].number >= 0) {
 						CENTEROFMASSX(par[i].gridCoordinateX, par[i].gridCoordinateY) = CENTEROFMASSX(par[i].gridCoordinateX, par[i].gridCoordinateY) + par[i].m * par[i].positionX;
@@ -203,7 +206,7 @@ int main(int argc, char *argv[])
 						MASS(par[i].gridCoordinateX, par[i].gridCoordinateY) = MASS(par[i].gridCoordinateX, par[i].gridCoordinateY) + par[i].m;
 					}
 				}
-
+				#pragma omp for
 				for (int i = params.yUpperBound; i >= params.yLowerBound; i = i - 1) {
 					for (int j = params.xUpperBound; j >= params.xLowerBound; j = j - 1) {
 						CENTEROFMASSX(i, j) = CENTEROFMASSX(i, j)/MASS(i, j);
@@ -431,7 +434,7 @@ int main(int argc, char *argv[])
 
 			// Barreira de sincronizacao
 			if(MPI_Barrier(comm) != MPI_SUCCESS) {
-				printf( "Error on barrier on iteration %ld\n", k);fflush(stdout);
+				printf(" Error on barrier on iteration %ld\n", k); fflush(stdout);
 			}
 
  			for (int i = 0; i < 8; ++i) {
@@ -457,9 +460,7 @@ int main(int argc, char *argv[])
 				if(parSendPos[i] != 0) {
 					MPI_Wait(&request[i], MPI_STATUS_IGNORE);
 				}
-			}
-
-			
+			} 
 		}
 
 		particle_t_final particle_recv;
