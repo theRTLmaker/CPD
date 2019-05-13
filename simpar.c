@@ -104,14 +104,13 @@ int main(int argc, char *argv[])
 	if(rank < numberOfProcess) {
 		// Cria um array de particulas com dimensao 2*(n_part/numberOfProcess)
 		par = CreateParticleArray(numberOfProcess);
-printf("rank %d - partVectSize %lld\n", rank, params.partVectSize);fflush(stdout);
 		// Inicia as particulas que estao na zona da grelha de controlo
 		par = init_particles(par, numberOfProcess, rank);
-printf("  rank %d - init_particles partVectSize %lld\n", rank, params.partVectSize);fflush(stdout);
+		printf("rank %d - partVectSize %lld, activeParticles %lld\n", rank, params.partVectSize, params.activeParticles);fflush(stdout);
 		parReceive =  initParReceived(params.n_part, &sizeParReceive, rank);
-printf("    rank %d - sizeParReceive %ld\n", rank, sizeParReceive);fflush(stdout);
+		
 		parSend = initParSend(params.n_part, &sizeParSend, rank);
-printf("      rank %d - sizeParSend %ld\n", rank, sizeParSend);fflush(stdout);
+		
 		grid = initTotalGrid(grid, params.ncside);
 
 		gridSendReceive = initGridSendReceive(rank);
@@ -120,8 +119,6 @@ printf("      rank %d - sizeParSend %ld\n", rank, sizeParSend);fflush(stdout);
 			printf("ERROR malloc idToSend\n");fflush(stdout);
 			exit(0);
 		}
-
-printf("        rank %d - idToSend\n", rank);fflush(stdout);
 
 		idToSend = findNeighborsRank(idToSend, rank, numberOfProcess);
 
@@ -433,14 +430,13 @@ printf("        rank %d - idToSend\n", rank);fflush(stdout);
 				do{
 					MPI_Iprobe(idToSend[i], 2, comm, &flag, &status);
 					if(flag) { 
-						memset(parReceive, 0, sizeParReceive*sizeof(particle_t_reduced));
 						MPI_Recv(parReceive, sizeParReceive, mpi_particle_t_reduced, idToSend[i], 2, comm, &status);
 						MPI_Get_count(&status, mpi_particle_t_reduced, &count);
 
 						// Verifica se tem espaço para guardar as novas particulas
 						if(params.activeParticles + count > params.partVectSize) {
 							// Caso se esgote o tamanho, aloca mais uma parcela de numero de particulas/processos
-							params.partVectSize = ((params.activeParticles + count)/(params.n_part/numberOfProcess) + 1) * (params.n_part/numberOfProcess);
+							params.partVectSize = params.partVectSize + params.reallocInc;
 							// Realoca vetor com espaço necessario
 							if((par = (particle_t *)realloc((void *) par, params.partVectSize*sizeof(particle_t))) == NULL) {
 								printf("ERROR malloc\n");

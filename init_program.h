@@ -21,6 +21,7 @@ typedef struct _parameters{
 	long long n_part;
 	long long activeParticles;
 	long long partVectSize;
+	long long reallocInc;
 	long timeStep;
 	long xSize;
 	long ySize;
