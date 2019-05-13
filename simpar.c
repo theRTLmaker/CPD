@@ -28,8 +28,10 @@ int main(int argc, char *argv[])
 	particle_t *par;
 	particle_t_reduced *parReceive;
 	particle_t_reduced **parSend;
-	long sizeParReceive;
-	long sizeParSend;
+	long sizeParReceive = 0;
+	long sizeParSend[8] = {0};
+	long incSizeParReceive = 0;
+	long incSizeParSend = 0;
 	long parAuxX;
 	long parAuxY;
 	int parSendPos[8];
@@ -107,10 +109,16 @@ int main(int argc, char *argv[])
 		// Inicia as particulas que estao na zona da grelha de controlo
 		par = init_particles(par, numberOfProcess, rank);
 		printf("rank %d - partVectSize %lld, activeParticles %lld\n", rank, params.partVectSize, params.activeParticles);fflush(stdout);
-		parReceive =  initParReceived(params.n_part, &sizeParReceive, rank);
+		parReceive =  initParReceived(params.n_part, &sizeParReceive, rank, &incSizeParReceive);
+		if(rank == 0) {
+			printf("rank %d - sizeParReceive %ld, incSizeParReceive %ld\n", rank, sizeParReceive, incSizeParReceive);fflush(stdout);
+		}
 		
-		parSend = initParSend(params.n_part, &sizeParSend, rank);
-		
+		parSend = initParSend(params.n_part, sizeParSend, rank, &incSizeParSend);
+		if(rank == 0) {
+			printf("rank %d - sizeParSend %ld, incSizeParSend %ld\n", rank, sizeParSend[0], incSizeParSend);fflush(stdout);
+		}
+
 		grid = initTotalGrid(grid, params.ncside);
 
 		gridSendReceive = initGridSendReceive(rank);
@@ -137,14 +145,14 @@ int main(int argc, char *argv[])
 			}
 
 			// Clear the memory position to send and receive particles
-			memset(parSend[0], 0, sizeParSend*sizeof(particle_t_reduced));
-			memset(parSend[1], 0, sizeParSend*sizeof(particle_t_reduced));
-			memset(parSend[2], 0, sizeParSend*sizeof(particle_t_reduced));
-			memset(parSend[3], 0, sizeParSend*sizeof(particle_t_reduced));
-			memset(parSend[4], 0, sizeParSend*sizeof(particle_t_reduced));
-			memset(parSend[5], 0, sizeParSend*sizeof(particle_t_reduced));
-			memset(parSend[6], 0, sizeParSend*sizeof(particle_t_reduced));
-			memset(parSend[7], 0, sizeParSend*sizeof(particle_t_reduced));
+			memset(parSend[0], 0, sizeParSend[0]*sizeof(particle_t_reduced));
+			memset(parSend[1], 0, sizeParSend[1]*sizeof(particle_t_reduced));
+			memset(parSend[2], 0, sizeParSend[2]*sizeof(particle_t_reduced));
+			memset(parSend[3], 0, sizeParSend[3]*sizeof(particle_t_reduced));
+			memset(parSend[4], 0, sizeParSend[4]*sizeof(particle_t_reduced));
+			memset(parSend[5], 0, sizeParSend[5]*sizeof(particle_t_reduced));
+			memset(parSend[6], 0, sizeParSend[6]*sizeof(particle_t_reduced));
+			memset(parSend[7], 0, sizeParSend[7]*sizeof(particle_t_reduced));
 			memset(parReceive, 0, sizeParReceive*sizeof(particle_t_reduced));
 			memset(parSendPos, 0, 8*sizeof(int));
 
@@ -381,6 +389,16 @@ int main(int argc, char *argv[])
 					parSend[destiny][parSendPos[destiny]].gridCoordinateY = par[i].gridCoordinateY;
 
 					parSendPos[destiny] = parSendPos[destiny] + 1;
+
+					// Caso esgote o espaço, incrementa o tamanho desse vetor
+					if(parSendPos[destiny] + 1 >= sizeParSend[destiny]) {
+						//printf("--rank %d - parSendPos[%d] %ld incSizeParReceive %ld\n", rank, destiny, sizeParSend[destiny], incSizeParSend);fflush(stdout);
+						sizeParSend[destiny] = sizeParSend[destiny] + incSizeParSend;
+						if((parSend[destiny] = (particle_t_reduced *)realloc(parSend[destiny], sizeParSend[destiny]*sizeof(particle_t_reduced))) == NULL) {
+							printf("ERROR realloc parSend\n");fflush(stdout);
+							exit(0);
+						}
+					}
 					
 					par[i].active = 0;
 				}
@@ -430,16 +448,30 @@ int main(int argc, char *argv[])
 				do{
 					MPI_Iprobe(idToSend[i], 2, comm, &flag, &status);
 					if(flag) { 
-						MPI_Recv(parReceive, sizeParReceive, mpi_particle_t_reduced, idToSend[i], 2, comm, &status);
 						MPI_Get_count(&status, mpi_particle_t_reduced, &count);
+
+						// Verifica se tem espaço suficiente para receber todas as particulas
+						if(count > sizeParReceive) {
+							// Incrementa o tamanho até ser suficiente para receber tudo
+							while(count > sizeParReceive) {
+								sizeParReceive = sizeParReceive + incSizeParReceive;
+								//printf("-rank %d - count %d, sizeParReceive %ld incSizeParReceive %ld\n", rank, count, sizeParReceive, incSizeParReceive);fflush(stdout);
+							}
+							if((parReceive = (particle_t_reduced *)realloc(parReceive, sizeParReceive*sizeof(particle_t_reduced))) == NULL) {
+								printf("ERROR realloc\n");fflush(stdout);
+								exit(0);
+							}
+						}
+
+						MPI_Recv(parReceive, sizeParReceive, mpi_particle_t_reduced, idToSend[i], 2, comm, &status);
 
 						// Verifica se tem espaço para guardar as novas particulas
 						if(params.activeParticles + count > params.partVectSize) {
 							// Caso se esgote o tamanho, aloca mais uma parcela de numero de particulas/processos
 							params.partVectSize = params.partVectSize + params.reallocInc;
 							// Realoca vetor com espaço necessario
-							if((par = (particle_t *)realloc((void *) par, params.partVectSize*sizeof(particle_t))) == NULL) {
-								printf("ERROR malloc\n");
+							if((par = (particle_t *)realloc(par, params.partVectSize*sizeof(particle_t))) == NULL) {
+								printf("ERROR malloc\n");fflush(stdout);
 								exit(0);
 							}
 						}
