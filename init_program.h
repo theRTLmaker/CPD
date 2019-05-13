@@ -19,6 +19,8 @@ typedef struct _parameters{
 	long ncside;
 	long long gridSize;
 	long long n_part;
+	long long activeParticles;
+	long long partVectSize;
 	long timeStep;
 	long xSize;
 	long ySize;
@@ -38,12 +40,9 @@ void handler_input(int argc ,char *argv[]);
 
 vector2grid findPosition(particle_t par, long ncside);
 
-void init_particles(particle_t *par);
+particle_t * init_particles(particle_t *par, int numberOfProcess);
 
-particle_t * CreateParticleArray(long long n_part);
-
-// Talvez para tentar paralelizar
-void computeGridPosition(particle_t *par);
+particle_t * CreateParticleArray(int numberOfProcess);
 
 int findGridDivision(int numberOfProcess, int rank);
 

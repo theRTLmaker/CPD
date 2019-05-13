@@ -30,9 +30,10 @@ void handler_input(int argc ,char *argv[]) {
 	}
 }
 
-particle_t * CreateParticleArray(long long n_part) {
-	particle_t *par = (particle_t*) malloc(n_part*sizeof(particle_t));
-	if(par ==NULL) {
+particle_t * CreateParticleArray(int numberOfProcess) {
+	params.partVectSize = 2*(params.n_part/numberOfProcess);
+	particle_t *par = (particle_t *) malloc(params.partVectSize*sizeof(particle_t));
+	if(par == NULL) {
 		printf("ERROR malloc\n");
 		exit(0);
 	}
@@ -40,37 +41,51 @@ particle_t * CreateParticleArray(long long n_part) {
 	return par;
 }
 
-void init_particles(particle_t *par) {
+particle_t * init_particles(particle_t *par, int numberOfProcess) {
     long long i;
-
+    double X, Y;
+    long gX, gY;
     srandom(params.seed);
+    params.activeParticles = 0;
+    for(i = 0; i < params.n_part; i++) {    
+    	X = RND0_1;
+        Y = RND0_1;
 
-    for(i = 0; i < params.n_part; i++) {        
-		par[i].positionX = RND0_1;
-        par[i].positionY = RND0_1;
-        
-        par[i].vx = RND0_1 / params.ncside / 10.0;
-        par[i].vy = RND0_1 / params.ncside / 10.0;
+        gX = X * params.ncside / 1;
+        gY = Y * params.ncside / 1;
 
-        par[i].m = RND0_1 * params.ncside / (G * 1e6 * params.n_part);
+        // Verifica se particula lhe pertence
+        if(gX >= params.xLowerBound && gX <= params.xUpperBound && gY >= params.yLowerBound && gY <= params.yUpperBound) {
+        	if(params.activeParticles == params.partVectSize) {
+        		// Caso se esgote o tamanho, aloca mais uma parcela de numero de particulas/processos
+        		params.partVectSize = params.partVectSize + (params.n_part/numberOfProcess);
+        		if((par = (particle_t *)realloc((void *) par, params.partVectSize)) == NULL) {
+					printf("ERROR malloc\n");
+					exit(0);
+				}
+        	}
+        	par[params.activeParticles].positionX = X;
+        	par[params.activeParticles].positionY = Y;
+        	par[params.activeParticles].gridCoordinateX = gX;
+        	par[params.activeParticles].gridCoordinateY = gY;
 
-        par[i].gridCoordinateX = par[i].positionX * params.ncside / 1;
-        par[i].gridCoordinateY = par[i].positionY * params.ncside / 1;
+        	par[params.activeParticles].vx = RND0_1 / params.ncside / 10.0;
+	        par[params.activeParticles].vy = RND0_1 / params.ncside / 10.0;
 
-        par[i].number = -1;
+	        par[params.activeParticles].m = RND0_1 * params.ncside / (G * 1e6 * params.n_part);
+
+	        par[params.activeParticles].active = 1;
+
+        	if(i == 0) par[i].isZero = 1;
+        	else par[params.activeParticles].isZero = 0;
+
+        	// Incrementa o número de particulas ativas
+        	params.activeParticles = params.activeParticles + 1;
+        	
+        }
     }
-}
 
-// Talvez para tentar paralelizar
-void computeGridPosition(particle_t *par) {
-	long long i;
-
-	for(i = 0; i < params.n_part; i++) {        
-		par[i].gridCoordinateX = par[i].positionX * params.ncside / 1;
-        par[i].gridCoordinateY = par[i].positionY * params.ncside / 1;
-
-        par[i].number = i;
-    }
+    return(par);
 }
 
 int findGridDivision(int numberOfProcess, int rank) {
@@ -81,7 +96,7 @@ int findGridDivision(int numberOfProcess, int rank) {
 		numberOfProcess = params.ncside*params.ncside;
 	// Calcular a divisao da grelha pelos process
 	MPI_Dims_create(numberOfProcess, 2, dims);
-	if(dims[1] == 1) {
+	if(dims[1] == 1 && numberOfProcess > 2) {
 		do {
 			numberOfProcess--;
 			MPI_Dims_create(numberOfProcess, 2, dims);
