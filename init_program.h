@@ -40,7 +40,7 @@ void handler_input(int argc ,char *argv[]);
 
 vector2grid findPosition(particle_t par, long ncside);
 
-particle_t * init_particles(particle_t *par, int numberOfProcess);
+particle_t * init_particles(particle_t *par, int numberOfProcess, int rank);
 
 particle_t * CreateParticleArray(int numberOfProcess);
 

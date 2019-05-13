@@ -31,7 +31,7 @@ typedef struct _vector2grid{
 typedef struct _particle_t {
 	char isZero;
 	char active;
-	float m;
+	double m;
 	double positionX;
 	double positionY;
 	double vx;
@@ -44,6 +44,7 @@ typedef struct _particle_t {
 
 typedef struct _particle_t_reduced {
 	char isZero;
+	double m;
 	double positionX;
 	double positionY;
 	double vx;
@@ -55,7 +56,7 @@ typedef struct _particle_t_reduced {
 typedef struct _particle_t_final {
 	double positionX;
 	double positionY;
-	float m;
+	double m;
 } particle_t_final;
 
 
