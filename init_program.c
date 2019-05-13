@@ -60,28 +60,26 @@ particle_t * init_particles(particle_t *par, int numberOfProcess, int rank) {
 
 		par[params.activeParticles].gridCoordinateX = par[params.activeParticles].positionX * params.ncside / 1;
 		par[params.activeParticles].gridCoordinateY = par[params.activeParticles].positionY * params.ncside / 1;
-
+        
         // Verifica se particula lhe pertence
         if(par[params.activeParticles].gridCoordinateX >= params.xLowerBound && par[params.activeParticles].gridCoordinateX <= params.xUpperBound && 
         	par[params.activeParticles].gridCoordinateY >= params.yLowerBound && par[params.activeParticles].gridCoordinateY <= params.yUpperBound) {
-    		//printf("\t%lld - rank %d x=%ld, y=%ld\n", i, rank, gX, gY);fflush(stdout);
 			par[params.activeParticles].active = 1;
 
 			par[params.activeParticles].isZero = 0;
         	
 	    	if(i == 0) par[i].isZero = 1;
 
-        	// Incrementa o número de particulas ativas
-        	params.activeParticles = params.activeParticles + 1;
     		// Caso se esgote o tamanho, aloca mais uma parcela de numero de particulas/processos
         	if(params.activeParticles + 1 >= params.partVectSize) {
         		params.partVectSize = params.partVectSize + (params.n_part/numberOfProcess);
-        		if((par = (particle_t *)realloc((void *) par, params.partVectSize)) == NULL) {
+        		if((par = (particle_t *)realloc(par, params.partVectSize*sizeof(particle_t))) == NULL) {
 					printf("ERROR malloc\n");
 					exit(0);
 				}
         	}
-
+        	// Incrementa o número de particulas ativas
+        	params.activeParticles = params.activeParticles + 1;
         }
     }
 
@@ -286,27 +284,29 @@ void freeEverything(particle_t *par, grid_t particleGrid, long long nside){
 	return;
 }
 
-particle_t_reduced * initParReceived(long long n_part, long *size) {
+particle_t_reduced * initParReceived(long long n_part, long *size, int rank) {
 	particle_t_reduced *par;
 
 	if(n_part <= 100) *size = n_part;
 	else if(n_part <= 500) *size = n_part/2;
-	else *size = n_part/ 10;
+	else if(n_part <= 5000000) *size = n_part/10;
+	else *size = n_part/ 100;
 	par = (particle_t_reduced *)malloc((*size)*sizeof(particle_t_reduced));
 	if(par == NULL) {
-		printf("ERROR malloc Par Received\n");fflush(stdout);
+		printf("ERROR malloc Par Received - %d\n", rank);fflush(stdout);
 		exit(0);
 	}
 
 	return(par);
 }	
 
-particle_t_reduced ** initParSend(long long n_part, long *size) {
+particle_t_reduced ** initParSend(long long n_part, long *size, int rank) {
 	particle_t_reduced **par;
 
 	if(n_part <= 100) *size = n_part;
 	else if(n_part <= 500) *size = n_part/2;
-	else *size = n_part/ 10;
+	else if(n_part <= 5000000) *size = n_part/10;
+	else *size = n_part/ 100;
 
 	par = (particle_t_reduced **) malloc(8*sizeof(particle_t_reduced *));
 	if(par == NULL) {
