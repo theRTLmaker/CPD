@@ -13,7 +13,6 @@
 #define LEFT -1
 #define RIGHT 1
 
-#define MATRIX(x, y, n) (x*n + y)
 #define CENTEROFMASSX(x, y) (grid.centerOfMassX[x*params.ncside + y])
 #define CENTEROFMASSY(x, y) (grid.centerOfMassY[x*params.ncside + y])
 #define MASS(x, y) (grid.m[x*params.ncside + y])
