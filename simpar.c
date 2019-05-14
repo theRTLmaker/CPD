@@ -23,6 +23,16 @@ int main(int argc, char *argv[])
 	MPI_Comm comm; 
 	int *idToSend;
 
+	// Time variables
+	double startIter = 0;
+	double endIter = 0;
+	double timeRearrange = 0;
+	double timeSending = 0;
+	double timeBarrier = 0;
+	double timeReciving = 0;
+	double start = 0;
+	double end = 0;
+
 	grid_t grid;
 	grid_tt **gridSendReceive;
 	particle_t *par;
@@ -44,7 +54,7 @@ int main(int argc, char *argv[])
 	MPI_Request request[8];
 	MPI_Status statuss[8];
 
-	MPI_Init_thread( &argc, &argv, 2, &provided);
+	MPI_Init_thread( &argc, &argv, 1, &provided);
 	MPI_Comm_size(MPI_COMM_WORLD, &numberOfProcess);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank );
 	MPI_Get_processor_name(processor_name, &namelen);
@@ -94,6 +104,8 @@ int main(int argc, char *argv[])
 	MPI_Type_create_struct(nitemsGrid, block_lengthsGrid, displacementsGrid, typesGrid, &mpi_grid_t);
 	MPI_Type_commit(&mpi_grid_t);
 
+	start = MPI_Wtime();
+
 	// init particles
 	handler_input(argc, argv);
 
@@ -108,16 +120,16 @@ int main(int argc, char *argv[])
 		par = CreateParticleArray(numberOfProcess);
 		// Inicia as particulas que estao na zona da grelha de controlo
 		par = init_particles(par, numberOfProcess, rank);
-		printf("rank %d - partVectSize %lld, activeParticles %lld\n", rank, params.partVectSize, params.activeParticles);fflush(stdout);
+		//printf("rank %d - partVectSize %lld, activeParticles %lld\n", rank, params.partVectSize, params.activeParticles);fflush(stdout);
 		parReceive =  initParReceived(params.n_part, &sizeParReceive, rank, &incSizeParReceive);
-		if(rank == 0) {
+		/*if(rank == 0) {
 			printf("rank %d - sizeParReceive %ld, incSizeParReceive %ld\n", rank, sizeParReceive, incSizeParReceive);fflush(stdout);
-		}
+		}*/
 		
 		parSend = initParSend(params.n_part, sizeParSend, rank, &incSizeParSend);
-		if(rank == 0) {
+		/*if(rank == 0) {
 			printf("rank %d - sizeParSend %ld, incSizeParSend %ld\n", rank, sizeParSend[0], incSizeParSend);fflush(stdout);
-		}
+		}*/
 
 		grid = initTotalGrid(grid, params.ncside);
 
@@ -134,7 +146,7 @@ int main(int argc, char *argv[])
 		/*printf("rank %d - %lld:\n%d - %d - %d\n%d -   - %d\n%d - %d - %d\n", rank, params.activeParticles, idToSend[1],
 			idToSend[2], idToSend[3], idToSend[0], idToSend[4], idToSend[7], idToSend[6], idToSend[5]);fflush(stdout);*/
 
-		
+		startIter = MPI_Wtime();
 		
 		int pos = 0;
 		// Time Step simulation
@@ -288,6 +300,8 @@ int main(int argc, char *argv[])
 			int sideUPDOWN;
 			int sideLEFTRIGHT;
 
+			timeSending -= MPI_Wtime();
+
 			#pragma omp for 
 			for(long long i = params.activeParticles - 1; i >= 0; i = i - 1){
 				par[i].appliedForceX = 0;
@@ -404,9 +418,12 @@ int main(int argc, char *argv[])
 				}
 			}
 
+			timeSending += MPI_Wtime();
+
 			// reagrupa as particulas todas, retirando o espaço deixado pelas que sairam
 			long long underEvaluation = params.activeParticles - 1;
 			for (long long i = 0; i < underEvaluation; ++i) {
+				timeRearrange -= MPI_Wtime();
 				if(par[i].active == 0) {
 					while(par[underEvaluation].active == 0 && underEvaluation > i) {
 						underEvaluation--;
@@ -426,25 +443,31 @@ int main(int argc, char *argv[])
 						par[underEvaluation].active = 0;
 					}
 				}
+				timeRearrange += MPI_Wtime();
 			}
+
 			
 			// Send the particles to the adjacent processes
 			for(int i = 0; i < 8; ++i) {
 				if(parSendPos[i] != 0) {
+					timeSending -= MPI_Wtime();
 					//printf("\trank %d sent %d particle to %d\n", rank, parSendPos[i], idToSend[i]); fflush(stdout);
 					MPI_Isend(parSend[i], parSendPos[i], mpi_particle_t_reduced, idToSend[i], 2 , comm, &request[i]);
 					params.activeParticles = params.activeParticles - parSendPos[i];
-					
+					timeSending += MPI_Wtime();
 				}
 			}
 
+			timeBarrier -= MPI_Wtime();
 			// Barreira de sincronizacao
 			if(MPI_Barrier(comm) != MPI_SUCCESS) {
 				printf(" Error on barrier on iteration %ld\n", k); fflush(stdout);
 			}
+			timeBarrier += MPI_Wtime();
 
 			// Recebe as particulas dos outros processos
 			for (int i = 0; i < 8; ++i) {
+				timeReciving -= MPI_Wtime();
 				do{
 					MPI_Iprobe(idToSend[i], 2, comm, &flag, &status);
 					if(flag) { 
@@ -491,6 +514,7 @@ int main(int argc, char *argv[])
 						}
 					}
 				}while(flag);
+				timeReciving += MPI_Wtime();
 			}
 			for (int i = 0; i < 8; ++i) {
 				if(parSendPos[i] != 0) {
@@ -499,35 +523,40 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		particle_t_final *particle_recv;
+		endIter = MPI_Wtime();
+
+		// Liberta espaço para novas alocações
+		freeParReceive(parReceive);
+		freeParSend(parSend);
+		freeGridSendReceive(gridSendReceive);
+		freeGrid(grid);
+		free(idToSend);
+
+		// Computes the total center of mass of its process
+		double centerOfMassX = 0;
+		double centerOfMassY = 0;
+		double totalMass = 0;
+
+		grid_tt final_send;
+		final_send.centerOfMassX = 0;
+		final_send.centerOfMassY = 0;
+		final_send.m = 0;
 		if(rank != 0) {
-			// Aloca estrutura para enviar valor das particulas
-			if((particle_recv = (particle_t_final *)malloc(params.activeParticles*sizeof(particle_t_final))) == NULL) {
-				printf("ERROR malloc\n");
-				exit(0);
-			}
-			// Carrega estrutura com as pasticulas que processo tem
-			for(long long i = params.activeParticles - 1; i >= 0; i = i - 1) {
-				particle_recv[i].positionX = par[i].positionX;
-				particle_recv[i].positionY = par[i].positionY;
-				particle_recv[i].m = par[i].m;
+			// Calcula o centro de massa com as particulas do processo 0
+			for(long long i = params.activeParticles - 1; i >= 0; i = i - 1) {	
+				final_send.centerOfMassX = final_send.centerOfMassX + par[i].m * par[i].positionX;
+				final_send.centerOfMassY = final_send.centerOfMassY + par[i].m * par[i].positionY;
+				final_send.m = final_send.m + par[i].m;
 				if(par[i].isZero != 0) {
 					printf("%.2f %.2f\n", par[i].positionX, par[i].positionY);fflush(stdout);
 				}
 			}
+			freeParticles(par);
+
 			// Envia particulas para o processo 0
-			MPI_Send(particle_recv, params.activeParticles, mpi_particle_t_final, 0, 3, comm);
+			MPI_Send(&final_send, 1, mpi_grid_t, 0, 3, comm);
 		}
 		else {
-			if((particle_recv = (particle_t_final *)malloc((params.n_part - params.activeParticles)*sizeof(particle_t_final))) == NULL) {
-				printf("ERROR malloc\n");
-				exit(0);
-			}
-			// Computes the total center of mass
-			double centerOfMassX = 0;
-			double centerOfMassY = 0;
-			double totalMass = 0;
-
 			// Calcula o centro de massa com as particulas do processo 0
 			for(long long i = params.activeParticles - 1; i >= 0; i = i - 1) {				
 				centerOfMassX = centerOfMassX + par[i].m * par[i].positionX;
@@ -537,20 +566,16 @@ int main(int argc, char *argv[])
 					printf("%.2f %.2f\n", par[i].positionX, par[i].positionY);fflush(stdout);
 				}
 			}
+
+			// Liberto as particulas para ter espaço para alocar mais
+			freeParticles(par);
+
 			// Receve particulas dos demais processos
-			long long int firstEmpty = 0;
 			for (int i = 1; i < numberOfProcess; ++i) {
-				MPI_Recv(&particle_recv[firstEmpty], (params.n_part - params.activeParticles), mpi_particle_t_final, i, 3, comm, &status);
-				MPI_Get_count(&status, mpi_particle_t_final, &count);
-				firstEmpty = firstEmpty + count;
-			}
-
-
-			// Calcula o centro de massa com as particulas dos restantes processos
-			for(long long i = firstEmpty - 1; i >= 0; i = i - 1) {
-				centerOfMassX = centerOfMassX + particle_recv[i].m * particle_recv[i].positionX;
-				centerOfMassY = centerOfMassY + particle_recv[i].m * particle_recv[i].positionY;
-				totalMass = totalMass + particle_recv[i].m;
+				MPI_Recv(&final_send, 1, mpi_grid_t, i, 3, comm, &status);
+				centerOfMassX = centerOfMassX + final_send.centerOfMassX;
+				centerOfMassY = centerOfMassY + final_send.centerOfMassY;
+				totalMass = totalMass + final_send.m;
 			}
 
 			// Imprime a informacao do centro de massa
@@ -559,14 +584,16 @@ int main(int argc, char *argv[])
 			printf("%.2f %.2f\n", centerOfMassX, centerOfMassY);fflush(stdout);
 		}
 
+
 		// Barreira de sincronizacao
 		if(MPI_Barrier(comm) != MPI_SUCCESS) {
 			printf(" Error on barrier on iteration %ld\n", k); fflush(stdout);
 		}
 
-		freeEverything(par, grid, params.ncside);
-		free(idToSend);
+		end = MPI_Wtime();
 	}
+
+	printf("rank %d - total %.2f seg, Iter %.2f seg, Arrange %.2f seg\n\t\t\ttimeSending %.2f seg, timeReciving %.2f seg\n\t\t\ttimeBarrier %.2f seg\n", rank, end - start, endIter - startIter, timeRearrange, timeSending, timeReciving, timeBarrier);
 	// Free everything
 	MPI_Type_free(&mpi_grid_t);
 	MPI_Type_free(&mpi_particle_t_reduced);

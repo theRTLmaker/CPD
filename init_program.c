@@ -296,9 +296,40 @@ int * findNeighborsRank(int* idToSend, int rank, int numberOfProcess) {
 	return(idToSend);
 }
 
-void freeEverything(particle_t *par, grid_t particleGrid, long long nside){
-	free(par);
 
+void freeParticles(particle_t *par) {
+	free(par);
+	return;
+}
+
+
+void freeParticlesFinal(particle_t_final *particle_recv) {
+	free(particle_recv);
+	return;
+}
+
+void freeParReceive(particle_t_reduced *parReceive) {
+	free(parReceive);
+	return;
+}
+
+void freeParSend(particle_t_reduced **parSend) {
+	for(int i = 0; i < 8; ++i)	{
+		free(parSend[i]);
+	}
+	free(parSend);
+	return;
+}
+
+void freeGridSendReceive(grid_tt **gridSendReceive) {
+	for(int i = 0; i < 16; ++i)	{
+		free(gridSendReceive[i]);
+	}
+	free(gridSendReceive);
+	return;
+}
+
+void freeGrid(grid_t particleGrid) {
 	free(particleGrid.m);
 	free(particleGrid.centerOfMassX);
 	free(particleGrid.centerOfMassY);

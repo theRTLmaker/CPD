@@ -55,7 +55,17 @@ grid_t initPartialGrid(int numberOfProcess, int processID, grid_t grid);
 
 int * findNeighborsRank(int* idToSend, int rank, int numberOfProcess);
 
-void freeEverything(particle_t *par, grid_t particleGrid, long long int nside);
+void freeParticles(particle_t *par);
+
+void freeParticlesFinal(particle_t_final *particle_recv);
+
+void freeParReceive(particle_t_reduced *parReceive);
+
+void freeParSend(particle_t_reduced **parSend);
+
+void freeGridSendReceive(grid_tt **gridSendReceive);
+
+void freeGrid(grid_t particleGrid);
 
 particle_t_reduced * initParReceived(long long n_part, long *size, int rank, long *incSizeParReceive);
 
