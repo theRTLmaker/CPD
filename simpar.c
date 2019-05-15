@@ -30,6 +30,7 @@ int main(int argc, char *argv[])
 	double timeSending = 0;
 	double timeBarrier = 0;
 	double timeReciving = 0;
+	double timeCenterOFMass = 0;
 	double start = 0;
 	double end = 0;
 
@@ -169,41 +170,67 @@ int main(int argc, char *argv[])
 			memset(grid.centerOfMassX, 0, params.gridSize*sizeof(double));
 			memset(grid.centerOfMassY, 0, params.gridSize*sizeof(double));
 
-			for(int i = params.activeParticles - 1; i >= 0; i = i - 1) {
-				if(par[i].active != 0) {
-					CENTEROFMASSX(par[i].gridCoordinateX, par[i].gridCoordinateY) = CENTEROFMASSX(par[i].gridCoordinateX, par[i].gridCoordinateY) + par[i].m * par[i].positionX;
-					CENTEROFMASSY(par[i].gridCoordinateX, par[i].gridCoordinateY) = CENTEROFMASSY(par[i].gridCoordinateX, par[i].gridCoordinateY) + par[i].m * par[i].positionY;
-					MASS(par[i].gridCoordinateX, par[i].gridCoordinateY) = MASS(par[i].gridCoordinateX, par[i].gridCoordinateY) + par[i].m;
+			timeCenterOFMass -= MPI_Wtime();
+
+			#pragma omp parallel
+			{
+				int x, y;
+				double *auxMend, *auxCMxEnd, *auxCMyEnd;
+				double auxMval, auxCMxVal, auxCMyVal;
+
+				#pragma omp for
+				for(int i = params.activeParticles - 1; i >= 0; i = i - 1) {
+					if(par[i].active != 0) {
+						x = par[i].gridCoordinateX;
+						y = par[i].gridCoordinateY;
+						auxMend = &(MASS(x, y));
+						auxCMxEnd = &(CENTEROFMASSX(x, y));
+						auxCMyEnd = &(CENTEROFMASSY(x, y));
+
+						auxMval = par[i].m;
+						auxCMxVal = par[i].m * par[i].positionX;
+						auxCMyVal = par[i].m * par[i].positionY;
+
+						#pragma omp atomic  
+						*auxCMxEnd += auxCMxVal;
+						#pragma omp atomic  
+						*auxCMyEnd += auxCMyVal;
+						#pragma omp atomic  
+						*auxMend += auxMval;
+					}
+				}
+			
+				#pragma omp for
+				for (int i = params.yUpperBound; i >= params.yLowerBound; i = i - 1) {
+					for (int j = params.xUpperBound; j >= params.xLowerBound; j = j - 1) {
+						CENTEROFMASSX(i, j) = CENTEROFMASSX(i, j)/MASS(i, j);
+						CENTEROFMASSY(i, j) = CENTEROFMASSY(i, j)/MASS(i, j);
+					}
+				}
+
+				#pragma omp for
+				// Copies the center of mass to be transmmited
+				for (int i = params.yUpperBound; i >= params.yLowerBound; i = i - 1) {
+					gridSendReceive[LEFTPROCESS][(params.yUpperBound - i)].centerOfMassX = CENTEROFMASSX(i, params.xLowerBound);
+					gridSendReceive[LEFTPROCESS][(params.yUpperBound - i)].centerOfMassY = CENTEROFMASSY(i, params.xLowerBound);
+					gridSendReceive[LEFTPROCESS][(params.yUpperBound - i)].m = MASS(i, params.xLowerBound);
+					gridSendReceive[RIGHTPROCESS][(params.yUpperBound - i)].centerOfMassX = CENTEROFMASSX(i, params.xUpperBound);
+					gridSendReceive[RIGHTPROCESS][(params.yUpperBound - i)].centerOfMassY = CENTEROFMASSY(i, params.xUpperBound);
+					gridSendReceive[RIGHTPROCESS][(params.yUpperBound - i)].m = MASS(i, params.xUpperBound);
+				}
+
+				#pragma omp for
+				for (int j = params.xUpperBound; j >= params.xLowerBound; j = j- 1) {
+					gridSendReceive[UPPROCESS][(params.xUpperBound - j)].centerOfMassX = CENTEROFMASSX(params.yUpperBound, j);
+					gridSendReceive[UPPROCESS][(params.xUpperBound - j)].centerOfMassY = CENTEROFMASSY(params.yUpperBound, j);
+					gridSendReceive[UPPROCESS][(params.xUpperBound - j)].m = MASS(params.yUpperBound, j);
+					gridSendReceive[DOWNPROCESS][(params.xUpperBound - j)].centerOfMassX = CENTEROFMASSX(params.yLowerBound, j);
+					gridSendReceive[DOWNPROCESS][(params.xUpperBound - j)].centerOfMassY = CENTEROFMASSY(params.yLowerBound, j);
+					gridSendReceive[DOWNPROCESS][(params.xUpperBound - j)].m = MASS(params.yLowerBound, j);
 				}
 			}
-
 			
-			for (int i = params.yUpperBound; i >= params.yLowerBound; i = i - 1) {
-				for (int j = params.xUpperBound; j >= params.xLowerBound; j = j - 1) {
-					CENTEROFMASSX(i, j) = CENTEROFMASSX(i, j)/MASS(i, j);
-					CENTEROFMASSY(i, j) = CENTEROFMASSY(i, j)/MASS(i, j);
-				}
-			}
-		
-			// Copies the center of mass to be transmmited
-			for (int i = params.yUpperBound; i >= params.yLowerBound; i = i - 1) {
-				gridSendReceive[LEFTPROCESS][(params.yUpperBound - i)].centerOfMassX = CENTEROFMASSX(i, params.xLowerBound);
-				gridSendReceive[LEFTPROCESS][(params.yUpperBound - i)].centerOfMassY = CENTEROFMASSY(i, params.xLowerBound);
-				gridSendReceive[LEFTPROCESS][(params.yUpperBound - i)].m = MASS(i, params.xLowerBound);
-				gridSendReceive[RIGHTPROCESS][(params.yUpperBound - i)].centerOfMassX = CENTEROFMASSX(i, params.xUpperBound);
-				gridSendReceive[RIGHTPROCESS][(params.yUpperBound - i)].centerOfMassY = CENTEROFMASSY(i, params.xUpperBound);
-				gridSendReceive[RIGHTPROCESS][(params.yUpperBound - i)].m = MASS(i, params.xUpperBound);
-			}
-
-			for (int j = params.xUpperBound; j >= params.xLowerBound; j = j- 1) {
-				gridSendReceive[UPPROCESS][(params.xUpperBound - j)].centerOfMassX = CENTEROFMASSX(params.yUpperBound, j);
-				gridSendReceive[UPPROCESS][(params.xUpperBound - j)].centerOfMassY = CENTEROFMASSY(params.yUpperBound, j);
-				gridSendReceive[UPPROCESS][(params.xUpperBound - j)].m = MASS(params.yUpperBound, j);
-				gridSendReceive[DOWNPROCESS][(params.xUpperBound - j)].centerOfMassX = CENTEROFMASSX(params.yLowerBound, j);
-				gridSendReceive[DOWNPROCESS][(params.xUpperBound - j)].centerOfMassY = CENTEROFMASSY(params.yLowerBound, j);
-				gridSendReceive[DOWNPROCESS][(params.xUpperBound - j)].m = MASS(params.yLowerBound, j);
-			}
-			
+			timeCenterOFMass += MPI_Wtime();
 		
 			gridSendReceive[UPLEFTPROCESS][0].centerOfMassX = CENTEROFMASSX(params.yUpperBound, params.xLowerBound);
 			gridSendReceive[UPLEFTPROCESS][0].centerOfMassY = CENTEROFMASSY(params.yUpperBound, params.xLowerBound);
@@ -283,132 +310,190 @@ int main(int argc, char *argv[])
 
 			timeSending -= MPI_Wtime();
 
-			// Compute interactions
-			// Run all particles
-			long aux1, aux2;
-			double invM;
-			int sideUPDOWN;
-			int sideLEFTRIGHT;
-			int destiny = 0;
-			long parAuxX;
-			long parAuxY;
-			int j;
-			int m;
+			#pragma omp parallel
+			{
+				// Compute interactions
+				// Run all particles
+				long aux1, aux2;
+				double invM;
+				int sideUPDOWN;
+				int sideLEFTRIGHT;
+				int destiny = 0;
+				long parAuxX;
+				long parAuxY;
+				int j;
+				int m;
 
-			for(long long i = params.activeParticles - 1; i >= 0; i = i - 1){
-				if(par[i].active != 0) {
-					par[i].appliedForceX = 0;
-					par[i].appliedForceY = 0;
+				#pragma omp for
+				for(long long i = params.activeParticles - 1; i >= 0; i = i - 1){
+					if(par[i].active != 0) {
+						par[i].appliedForceX = 0;
+						par[i].appliedForceY = 0;
 
-					// Run the adjacent grids
-					for (int n = 0; n < 9; n = n + 1) {
-						j = n / 3 - 1;
-						m = n % 3 - 1;
-						aux1 = 0, aux2 = 0;
+						// Run the adjacent grids
+						for (int n = 0; n < 9; n = n + 1) {
+							j = n / 3 - 1;
+							m = n % 3 - 1;
+							aux1 = 0, aux2 = 0;
 
-						if(par[i].gridCoordinateX+j == -1) {
-							sideLEFTRIGHT = LEFT;
-							aux1 = par[i].gridCoordinateX+j + params.ncside;
-						} else if(par[i].gridCoordinateX+j == params.ncside) {
-							sideLEFTRIGHT = RIGHT;
-							aux1 = par[i].gridCoordinateX+j - params.ncside;
-						} else {
-							sideLEFTRIGHT = MIDDLE;
-							aux1 = par[i].gridCoordinateX+j;
-						}
-
-						if(par[i].gridCoordinateY+m == -1){
-							sideUPDOWN = DOWN;
-							aux2 = par[i].gridCoordinateY+m + params.ncside;
-						} else if(par[i].gridCoordinateY+m == params.ncside){
-							sideUPDOWN = UP;
-							aux2 = par[i].gridCoordinateY+m - params.ncside;
-						} else {
-							sideUPDOWN = MIDDLE;
-							aux2 = par[i].gridCoordinateY+m;
-						}
-						
-						
-						if(MASS(aux1, aux2) != 0)
-							calculateGravForce(&(par[i]), CENTEROFMASSX(aux1, aux2), CENTEROFMASSY(aux1, aux2), 
-													MASS(aux1, aux2), sideUPDOWN, sideLEFTRIGHT); //for each adjacent cell.---- 
-					}
-
-					invM = 1.0/par[i].m;
-					// Updates particles position and velocity and position on the grid
-					par[i].vx = par[i].vx + par[i].appliedForceX * invM; //a = F/m 
-					par[i].vy = par[i].vy + par[i].appliedForceY * invM;
-
-					par[i].positionX = par[i].positionX + par[i].vx + 0.5 * par[i].appliedForceX * invM;//x = x0 + v0t + 0.5 a t^2 (t = 1)
-					par[i].positionY = par[i].positionY + par[i].vy + 0.5 * par[i].appliedForceY * invM;
-
-					parAuxX = par[i].positionX * params.ncside;
-					parAuxY = par[i].positionY * params.ncside;
-
-
-					//See if its out of bounds
-					if(par[i].positionX >= 1) par[i].positionX = par[i].positionX - (int)(par[i].positionX);
-					else if(par[i].positionX < 0) par[i].positionX = 1 + (par[i].positionX - ceil(par[i].positionX)); 
-
-					if(par[i].positionY >= 1) par[i].positionY = par[i].positionY - (int)(par[i].positionY);
-					else if(par[i].positionY < 0) par[i].positionY = 1 + (par[i].positionY - ceil(par[i].positionY));
-
-					// Updates the position of the particle on the grid of cells
-					par[i].gridCoordinateX = par[i].positionX * params.ncside;
-					par[i].gridCoordinateY = par[i].positionY * params.ncside;
-
-					// Verificar se particula ficou fora da área de trabalho
-					if(par[i].gridCoordinateX < params.xLowerBound || par[i].gridCoordinateX > params.xUpperBound || 
-						par[i].gridCoordinateY < params.yLowerBound || par[i].gridCoordinateY > params.yUpperBound) {
-						if(parAuxX < params.xLowerBound) {
-							if(parAuxY < params.yLowerBound)
-								destiny = 7;
-							else if(parAuxY > params.yUpperBound)
-								destiny = 5;
-							else
-								destiny = 0;
-						}
-						else if(parAuxX > params.xUpperBound) {
-							if(parAuxY < params.yLowerBound)
-								destiny = 5;
-							else if(parAuxY > params.yUpperBound)
-								destiny = 3;
-							else
-								destiny = 4;
-						}
-						else{
-							if(parAuxY < params.yLowerBound)
-								destiny = 6;
-							else
-								destiny = 2;
-						}
-
-						parSend[destiny][parSendPos[destiny]].isZero = par[i].isZero;
-						parSend[destiny][parSendPos[destiny]].m = par[i].m;
-						parSend[destiny][parSendPos[destiny]].positionX = par[i].positionX;
-						parSend[destiny][parSendPos[destiny]].positionY = par[i].positionY;
-						parSend[destiny][parSendPos[destiny]].vx = par[i].vx;
-						parSend[destiny][parSendPos[destiny]].vy = par[i].vy;
-						parSend[destiny][parSendPos[destiny]].gridCoordinateX = par[i].gridCoordinateX;
-						parSend[destiny][parSendPos[destiny]].gridCoordinateY = par[i].gridCoordinateY;
-
-						parSendPos[destiny] = parSendPos[destiny] + 1;
-
-						// Caso esgote o espaço, incrementa o tamanho desse vetor
-						if(parSendPos[destiny] + 1 >= sizeParSend[destiny]) {
-							//printf("--rank %d - parSendPos[%d] %ld incSizeParReceive %ld\n", rank, destiny, sizeParSend[destiny], incSizeParSend);fflush(stdout);
-							sizeParSend[destiny] = sizeParSend[destiny] + incSizeParSend;
-							if((parSend[destiny] = (particle_t_reduced *)realloc(parSend[destiny], sizeParSend[destiny]*sizeof(particle_t_reduced))) == NULL) {
-								printf("ERROR realloc parSend\n");fflush(stdout);
-								exit(0);
+							if(par[i].gridCoordinateX+j == -1) {
+								sideLEFTRIGHT = LEFT;
+								aux1 = par[i].gridCoordinateX+j + params.ncside;
+							} else if(par[i].gridCoordinateX+j == params.ncside) {
+								sideLEFTRIGHT = RIGHT;
+								aux1 = par[i].gridCoordinateX+j - params.ncside;
+							} else {
+								sideLEFTRIGHT = MIDDLE;
+								aux1 = par[i].gridCoordinateX+j;
 							}
+
+							if(par[i].gridCoordinateY+m == -1){
+								sideUPDOWN = DOWN;
+								aux2 = par[i].gridCoordinateY+m + params.ncside;
+							} else if(par[i].gridCoordinateY+m == params.ncside){
+								sideUPDOWN = UP;
+								aux2 = par[i].gridCoordinateY+m - params.ncside;
+							} else {
+								sideUPDOWN = MIDDLE;
+								aux2 = par[i].gridCoordinateY+m;
+							}
+							
+							
+							if(MASS(aux1, aux2) != 0)
+								calculateGravForce(&(par[i]), CENTEROFMASSX(aux1, aux2), CENTEROFMASSY(aux1, aux2), 
+														MASS(aux1, aux2), sideUPDOWN, sideLEFTRIGHT); //for each adjacent cell.---- 
 						}
-						
-						par[i].active = 0;
+
+						invM = 1.0/par[i].m;
+						// Updates particles position and velocity and position on the grid
+						par[i].vx = par[i].vx + par[i].appliedForceX * invM; //a = F/m 
+						par[i].vy = par[i].vy + par[i].appliedForceY * invM;
+
+						par[i].positionX = par[i].positionX + par[i].vx + 0.5 * par[i].appliedForceX * invM;//x = x0 + v0t + 0.5 a t^2 (t = 1)
+						par[i].positionY = par[i].positionY + par[i].vy + 0.5 * par[i].appliedForceY * invM;
+
+						parAuxX = par[i].positionX * params.ncside;
+						parAuxY = par[i].positionY * params.ncside;
+
+
+						//See if its out of bounds
+						if(par[i].positionX >= 1) par[i].positionX = par[i].positionX - (int)(par[i].positionX);
+						else if(par[i].positionX < 0) par[i].positionX = 1 + (par[i].positionX - ceil(par[i].positionX)); 
+
+						if(par[i].positionY >= 1) par[i].positionY = par[i].positionY - (int)(par[i].positionY);
+						else if(par[i].positionY < 0) par[i].positionY = 1 + (par[i].positionY - ceil(par[i].positionY));
+
+						// Updates the position of the particle on the grid of cells
+						par[i].gridCoordinateX = par[i].positionX * params.ncside;
+						par[i].gridCoordinateY = par[i].positionY * params.ncside;
+
+
+						int posicao = 0;
+						// Verificar se particula ficou fora da área de trabalho
+						if(par[i].gridCoordinateX < params.xLowerBound || par[i].gridCoordinateX > params.xUpperBound || 
+							par[i].gridCoordinateY < params.yLowerBound || par[i].gridCoordinateY > params.yUpperBound) {
+							if(parAuxX < params.xLowerBound) {
+								if(parAuxY < params.yLowerBound)
+									destiny = 7;
+								else if(parAuxY > params.yUpperBound)
+									destiny = 5;
+								else
+									destiny = 0;
+							}
+							else if(parAuxX > params.xUpperBound) {
+								if(parAuxY < params.yLowerBound)
+									destiny = 5;
+								else if(parAuxY > params.yUpperBound)
+									destiny = 3;
+								else
+									destiny = 4;
+							}
+							else{
+								if(parAuxY < params.yLowerBound)
+									destiny = 6;
+								else
+									destiny = 2;
+							}
+
+							#pragma omp critical (send)
+							{
+								posicao = parSendPos[destiny];
+								parSendPos[destiny] = parSendPos[destiny] + 1;
+								// Caso esgote o espaço, incrementa o tamanho desse vetor
+								if(parSendPos[destiny] >= sizeParSend[destiny]) {
+									//printf("--rank %d - parSendPos[%d] %ld incSizeParReceive %ld\n", rank, destiny, sizeParSend[destiny], incSizeParSend);fflush(stdout);
+									sizeParSend[destiny] = sizeParSend[destiny] + incSizeParSend;
+									if((parSend[destiny] = (particle_t_reduced *)realloc(parSend[destiny], sizeParSend[destiny]*sizeof(particle_t_reduced))) == NULL) {
+										printf("ERROR realloc parSend\n");fflush(stdout);
+										exit(0);
+									}
+								}
+
+								parSend[destiny][posicao].isZero = par[i].isZero;
+								parSend[destiny][posicao].m = par[i].m;
+								parSend[destiny][posicao].positionX = par[i].positionX;
+								parSend[destiny][posicao].positionY = par[i].positionY;
+								parSend[destiny][posicao].vx = par[i].vx;
+								parSend[destiny][posicao].vy = par[i].vy;
+								parSend[destiny][posicao].gridCoordinateX = par[i].gridCoordinateX;
+								parSend[destiny][posicao].gridCoordinateY = par[i].gridCoordinateY;
+							}
+							
+							par[i].active = 0;
+						}
+						/*
+						// Verificar se particula ficou fora da área de trabalho
+						if(par[i].gridCoordinateX < params.xLowerBound || par[i].gridCoordinateX > params.xUpperBound || 
+							par[i].gridCoordinateY < params.yLowerBound || par[i].gridCoordinateY > params.yUpperBound) {
+							if(parAuxX < params.xLowerBound) {
+								if(parAuxY < params.yLowerBound)
+									destiny = 7;
+								else if(parAuxY > params.yUpperBound)
+									destiny = 5;
+								else
+									destiny = 0;
+							}
+							else if(parAuxX > params.xUpperBound) {
+								if(parAuxY < params.yLowerBound)
+									destiny = 5;
+								else if(parAuxY > params.yUpperBound)
+									destiny = 3;
+								else
+									destiny = 4;
+							}
+							else{
+								if(parAuxY < params.yLowerBound)
+									destiny = 6;
+								else
+									destiny = 2;
+							}
+
+							parSend[destiny][parSendPos[destiny]].isZero = par[i].isZero;
+							parSend[destiny][parSendPos[destiny]].m = par[i].m;
+							parSend[destiny][parSendPos[destiny]].positionX = par[i].positionX;
+							parSend[destiny][parSendPos[destiny]].positionY = par[i].positionY;
+							parSend[destiny][parSendPos[destiny]].vx = par[i].vx;
+							parSend[destiny][parSendPos[destiny]].vy = par[i].vy;
+							parSend[destiny][parSendPos[destiny]].gridCoordinateX = par[i].gridCoordinateX;
+							parSend[destiny][parSendPos[destiny]].gridCoordinateY = par[i].gridCoordinateY;
+
+							parSendPos[destiny] = parSendPos[destiny] + 1;
+
+							// Caso esgote o espaço, incrementa o tamanho desse vetor
+							if(parSendPos[destiny] + 1 >= sizeParSend[destiny]) {
+								//printf("--rank %d - parSendPos[%d] %ld incSizeParReceive %ld\n", rank, destiny, sizeParSend[destiny], incSizeParSend);fflush(stdout);
+								sizeParSend[destiny] = sizeParSend[destiny] + incSizeParSend;
+								if((parSend[destiny] = (particle_t_reduced *)realloc(parSend[destiny], sizeParSend[destiny]*sizeof(particle_t_reduced))) == NULL) {
+									printf("ERROR realloc parSend\n");fflush(stdout);
+									exit(0);
+								}
+							}
+							
+							par[i].active = 0;
+						}*/
 					}
 				}
 			}
-			
 			timeSending += MPI_Wtime();
 
 			
@@ -588,7 +673,7 @@ int main(int argc, char *argv[])
 		end = MPI_Wtime();
 	}
 	if(rank == 0) {
-		printf("rank %d - total %.2f seg, Iter %.2f seg, Arrange %.2f seg\n\t\t\ttimeSending %.2f seg, timeReciving %.2f seg\n\t\t\ttimeBarrier %.2f seg\n", rank, end - start, endIter - startIter, timeRearrange, timeSending, timeReciving, timeBarrier);
+		printf("rank %d - total %.2f seg, Iter %.2f seg, Arrange %.2f seg\n\t\t\ttimeSending %.2f seg, timeReciving %.2f seg\n\t\t\ttimeBarrier %.2f seg\n\t\t\ttimeCenterOFMass %.3f\n", rank, end - start, endIter - startIter, timeRearrange, timeSending, timeReciving, timeBarrier, timeCenterOFMass);
 	}
 	// Free everything
 	MPI_Type_free(&mpi_grid_t);
