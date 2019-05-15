@@ -26,7 +26,6 @@ int main(int argc, char *argv[])
 	// Time variables
 	double start = 0;
 	double end = 0;
-	double timeReciving = 0;
 
 	grid_t grid;
 	grid_tt **gridSendReceive;
@@ -428,7 +427,6 @@ int main(int argc, char *argv[])
 
 			// Recebe as particulas dos outros processos
 			for (int i = 0; i < 8; ++i) {
-				timeReciving -= MPI_Wtime();
 				MPI_Probe(idToSend[i], 2, comm, &status);
 				MPI_Get_count(&status, mpi_particle_t_reduced, &count);
 				// Verifica se tem espaço suficiente para receber todas as particulas
@@ -498,8 +496,6 @@ int main(int argc, char *argv[])
 
 					params.activeParticles = params.activeParticles + 1;
 				}
-				
-				timeReciving += MPI_Wtime();
 			}
 
 			for (int i = 0; i < 8; ++i) {
@@ -607,7 +603,7 @@ int main(int argc, char *argv[])
 		end = MPI_Wtime();
 	}
 	if(rank == 0) {
-		printf("total %.2f seg - timeReciving %.2f seg\n", end - start, timeReciving);
+		printf("total %.2f seg\n", end - start);fflush(stdout);
 	}
 	// Free everything
 	MPI_Type_free(&mpi_grid_t);
