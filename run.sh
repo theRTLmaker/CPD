@@ -5,4 +5,4 @@
 #SBATCH --ntasks=32
 #SBATCH --cpus-per-task=4
 #SBATCH --nodes=32
-srun ./simpar 2 20 100000000 5
+srun ./simpar 5 200 300000000 2

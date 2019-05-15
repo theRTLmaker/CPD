@@ -253,35 +253,37 @@ int main(int argc, char *argv[])
 			gridSendReceive[DOWNLEFTPROCESS][0].centerOfMassY = CENTEROFMASSY(params.yLowerBound, params.xLowerBound);
 			gridSendReceive[DOWNLEFTPROCESS][0].m = MASS(params.yLowerBound, params.xLowerBound);
 
-timeReciving -= MPI_Wtime();
-			for (int i = 0; i < 8; ++i)
-			{
-				MPI_Irecv(gridSendReceive[i+8], ((i%2)==1)+((i%4)==0)*params.sizeVertical+((i%4)==2)*params.sizeHorizontal, mpi_grid_t, idToSend[i], SENDCENTER,comm, &request[i]);
-			}
-			// Envia os centros de massa das fronteiras e recebe das regiões vizinhas
-			/*MPI_Irecv(gridSendReceive[8], params.sizeVertical, mpi_grid_t, idToSend[0], SENDCENTER,comm, &request[0]);
-			MPI_Irecv(gridSendReceive[9], 1, mpi_grid_t, idToSend[1], SENDCENTER,comm, &request[1]);
-			MPI_Irecv(gridSendReceive[10], params.sizeHorizontal, mpi_grid_t, idToSend[2], SENDCENTER,comm, &request[2]);
-			MPI_Irecv(gridSendReceive[11], 1, mpi_grid_t, idToSend[3], SENDCENTER,comm, &request[3]);
-			MPI_Irecv(gridSendReceive[12], params.sizeVertical, mpi_grid_t, idToSend[4], SENDCENTER,comm, &request[4]);
-			MPI_Irecv(gridSendReceive[13], 1, mpi_grid_t, idToSend[5], SENDCENTER,comm, &request[5]);
-			MPI_Irecv(gridSendReceive[14], params.sizeHorizontal, mpi_grid_t, idToSend[6], SENDCENTER,comm, &request[6]);
-			MPI_Irecv(gridSendReceive[15], 1, mpi_grid_t, idToSend[7], SENDCENTER,comm, &request[7]);*/
-timeReciving += MPI_Wtime();
 timeSending -= MPI_Wtime();
-			for (int i = 0; i < 8; ++i)
+			#pragma omp parallel 
 			{
-				MPI_Send(gridSendReceive[i], ((i%2)==1)+((i%4)==0)*params.sizeVertical+((i%4)==2)*params.sizeHorizontal, mpi_grid_t, idToSend[i], 0, comm);
+				#pragma omp for
+				for (int i = 0; i < 8; ++i)	{
+					MPI_Irecv(gridSendReceive[i+8], ((i%2)==1)+((i%4)==0)*params.sizeVertical+((i%4)==2)*params.sizeHorizontal, mpi_grid_t, idToSend[i], SENDCENTER,comm, &request[i]);
+				}
+				// Envia os centros de massa das fronteiras e recebe das regiões vizinhas
+				/*MPI_Irecv(gridSendReceive[8], params.sizeVertical, mpi_grid_t, idToSend[0], SENDCENTER,comm, &request[0]);
+				MPI_Irecv(gridSendReceive[9], 1, mpi_grid_t, idToSend[1], SENDCENTER,comm, &request[1]);
+				MPI_Irecv(gridSendReceive[10], params.sizeHorizontal, mpi_grid_t, idToSend[2], SENDCENTER,comm, &request[2]);
+				MPI_Irecv(gridSendReceive[11], 1, mpi_grid_t, idToSend[3], SENDCENTER,comm, &request[3]);
+				MPI_Irecv(gridSendReceive[12], params.sizeVertical, mpi_grid_t, idToSend[4], SENDCENTER,comm, &request[4]);
+				MPI_Irecv(gridSendReceive[13], 1, mpi_grid_t, idToSend[5], SENDCENTER,comm, &request[5]);
+				MPI_Irecv(gridSendReceive[14], params.sizeHorizontal, mpi_grid_t, idToSend[6], SENDCENTER,comm, &request[6]);
+				MPI_Irecv(gridSendReceive[15], 1, mpi_grid_t, idToSend[7], SENDCENTER,comm, &request[7]);*/
+
+				#pragma omp for
+				for (int i = 0; i < 8; ++i) {
+					MPI_Send(gridSendReceive[i], ((i%2)==1)+((i%4)==0)*params.sizeVertical+((i%4)==2)*params.sizeHorizontal, mpi_grid_t, idToSend[i], 0, comm);
+				}
+				/*MPI_Send(gridSendReceive[0], params.sizeVertical, mpi_grid_t, idToSend[0], 0, comm);
+				MPI_Send(gridSendReceive[1], 1, mpi_grid_t, idToSend[1], 0, comm);
+				MPI_Send(gridSendReceive[2], params.sizeHorizontal, mpi_grid_t, idToSend[2], 0, comm);
+				MPI_Send(gridSendReceive[3], 1, mpi_grid_t, idToSend[3], 0, comm);
+				MPI_Send(gridSendReceive[4], params.sizeVertical, mpi_grid_t, idToSend[4], 0, comm);
+				MPI_Send(gridSendReceive[5], 1, mpi_grid_t, idToSend[5], 0, comm);
+				MPI_Send(gridSendReceive[6], params.sizeHorizontal, mpi_grid_t, idToSend[6], 0, comm);
+				MPI_Send(gridSendReceive[7], 1, mpi_grid_t, idToSend[7], 0, comm);*/
+	timeSending += MPI_Wtime();
 			}
-			/*MPI_Send(gridSendReceive[0], params.sizeVertical, mpi_grid_t, idToSend[0], 0, comm);
-			MPI_Send(gridSendReceive[1], 1, mpi_grid_t, idToSend[1], 0, comm);
-			MPI_Send(gridSendReceive[2], params.sizeHorizontal, mpi_grid_t, idToSend[2], 0, comm);
-			MPI_Send(gridSendReceive[3], 1, mpi_grid_t, idToSend[3], 0, comm);
-			MPI_Send(gridSendReceive[4], params.sizeVertical, mpi_grid_t, idToSend[4], 0, comm);
-			MPI_Send(gridSendReceive[5], 1, mpi_grid_t, idToSend[5], 0, comm);
-			MPI_Send(gridSendReceive[6], params.sizeHorizontal, mpi_grid_t, idToSend[6], 0, comm);
-			MPI_Send(gridSendReceive[7], 1, mpi_grid_t, idToSend[7], 0, comm);*/
-timeSending += MPI_Wtime();
 timeReciving -= MPI_Wtime();
 			MPI_Waitall(8, request, statuss);
 timeReciving += MPI_Wtime();
