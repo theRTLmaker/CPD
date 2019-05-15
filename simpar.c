@@ -24,17 +24,9 @@ int main(int argc, char *argv[])
 	int *idToSend;
 
 	// Time variables
-	double timeGenerate = 0;
-	double timeIter = 0;
-	double startIter = 0;
-	double endIter = 0;
-	double timeRearrange = 0;
-	double timeSending = 0;
-	double timeReceivePar = 0;
-	double timeReciving = 0;
-	double timeCenterOFMass = 0;
 	double start = 0;
 	double end = 0;
+	double timeReciving = 0;
 
 	grid_t grid;
 	grid_tt **gridSendReceive;
@@ -116,23 +108,14 @@ int main(int argc, char *argv[])
 	MPI_Comm_split(MPI_COMM_WORLD, isActive, rank, &comm);
 	
 	if(rank < numberOfProcess) {
-		timeGenerate -= MPI_Wtime();
 		// Cria um array de particulas com dimensao 2*(n_part/numberOfProcess)
 		par = CreateParticleArray(numberOfProcess);
 		// Inicia as particulas que estao na zona da grelha de controlo
 		par = init_particles(par, numberOfProcess, rank);
 
-		timeGenerate += MPI_Wtime();
-		//printf("rank %d - partVectSize %lld, activeParticles %lld\n", rank, params.partVectSize, params.activeParticles);fflush(stdout);
 		parReceive =  initParReceived(params.n_part, &sizeParReceive, rank, &incSizeParReceive);
-		/*if(rank == 0) {
-			printf("rank %d - sizeParReceive %ld, incSizeParReceive %ld\n", rank, sizeParReceive, incSizeParReceive);fflush(stdout);
-		}*/
 		
 		parSend = initParSend(params.n_part, sizeParSend, rank, &incSizeParSend);
-		/*if(rank == 0) {
-			printf("rank %d - sizeParSend %ld, incSizeParSend %ld\n", rank, sizeParSend[0], incSizeParSend);fflush(stdout);
-		}*/
 
 		grid = initTotalGrid(grid, params.ncside);
 
@@ -144,12 +127,6 @@ int main(int argc, char *argv[])
 		}
 
 		idToSend = findNeighborsRank(idToSend, rank, numberOfProcess);
-
-
-		/*printf("rank %d - %lld:\n%d - %d - %d\n%d -   - %d\n%d - %d - %d\n", rank, params.activeParticles, idToSend[1],
-			idToSend[2], idToSend[3], idToSend[0], idToSend[4], idToSend[7], idToSend[6], idToSend[5]);fflush(stdout);*/
-
-		startIter = MPI_Wtime();
 		
 		// Time Step simulation
 		for(k = params.timeStep; k > 0; k = k - 1) {
@@ -174,8 +151,6 @@ int main(int argc, char *argv[])
 			memset(grid.m, 0, params.gridSize*sizeof(double));
 			memset(grid.centerOfMassX, 0, params.gridSize*sizeof(double));
 			memset(grid.centerOfMassY, 0, params.gridSize*sizeof(double));
-
-			timeCenterOFMass -= MPI_Wtime();
 
 			#pragma omp parallel
 			{
@@ -234,9 +209,7 @@ int main(int argc, char *argv[])
 					gridSendReceive[DOWNPROCESS][(params.xUpperBound - j)].m = MASS(params.yLowerBound, j);
 				}
 			}
-			
-			timeCenterOFMass += MPI_Wtime();
-		
+
 			gridSendReceive[UPLEFTPROCESS][0].centerOfMassX = CENTEROFMASSX(params.yUpperBound, params.xLowerBound);
 			gridSendReceive[UPLEFTPROCESS][0].centerOfMassY = CENTEROFMASSY(params.yUpperBound, params.xLowerBound);
 			gridSendReceive[UPLEFTPROCESS][0].m = MASS(params.yUpperBound, params.xLowerBound);
@@ -253,40 +226,19 @@ int main(int argc, char *argv[])
 			gridSendReceive[DOWNLEFTPROCESS][0].centerOfMassY = CENTEROFMASSY(params.yLowerBound, params.xLowerBound);
 			gridSendReceive[DOWNLEFTPROCESS][0].m = MASS(params.yLowerBound, params.xLowerBound);
 
-timeSending -= MPI_Wtime();
 			#pragma omp parallel 
 			{
 				#pragma omp for
 				for (int i = 0; i < 8; ++i)	{
 					MPI_Irecv(gridSendReceive[i+8], ((i%2)==1)+((i%4)==0)*params.sizeVertical+((i%4)==2)*params.sizeHorizontal, mpi_grid_t, idToSend[i], SENDCENTER,comm, &request[i]);
 				}
-				// Envia os centros de massa das fronteiras e recebe das regiões vizinhas
-				/*MPI_Irecv(gridSendReceive[8], params.sizeVertical, mpi_grid_t, idToSend[0], SENDCENTER,comm, &request[0]);
-				MPI_Irecv(gridSendReceive[9], 1, mpi_grid_t, idToSend[1], SENDCENTER,comm, &request[1]);
-				MPI_Irecv(gridSendReceive[10], params.sizeHorizontal, mpi_grid_t, idToSend[2], SENDCENTER,comm, &request[2]);
-				MPI_Irecv(gridSendReceive[11], 1, mpi_grid_t, idToSend[3], SENDCENTER,comm, &request[3]);
-				MPI_Irecv(gridSendReceive[12], params.sizeVertical, mpi_grid_t, idToSend[4], SENDCENTER,comm, &request[4]);
-				MPI_Irecv(gridSendReceive[13], 1, mpi_grid_t, idToSend[5], SENDCENTER,comm, &request[5]);
-				MPI_Irecv(gridSendReceive[14], params.sizeHorizontal, mpi_grid_t, idToSend[6], SENDCENTER,comm, &request[6]);
-				MPI_Irecv(gridSendReceive[15], 1, mpi_grid_t, idToSend[7], SENDCENTER,comm, &request[7]);*/
-
 				#pragma omp for
 				for (int i = 0; i < 8; ++i) {
 					MPI_Send(gridSendReceive[i], ((i%2)==1)+((i%4)==0)*params.sizeVertical+((i%4)==2)*params.sizeHorizontal, mpi_grid_t, idToSend[i], 0, comm);
-				}
-				/*MPI_Send(gridSendReceive[0], params.sizeVertical, mpi_grid_t, idToSend[0], 0, comm);
-				MPI_Send(gridSendReceive[1], 1, mpi_grid_t, idToSend[1], 0, comm);
-				MPI_Send(gridSendReceive[2], params.sizeHorizontal, mpi_grid_t, idToSend[2], 0, comm);
-				MPI_Send(gridSendReceive[3], 1, mpi_grid_t, idToSend[3], 0, comm);
-				MPI_Send(gridSendReceive[4], params.sizeVertical, mpi_grid_t, idToSend[4], 0, comm);
-				MPI_Send(gridSendReceive[5], 1, mpi_grid_t, idToSend[5], 0, comm);
-				MPI_Send(gridSendReceive[6], params.sizeHorizontal, mpi_grid_t, idToSend[6], 0, comm);
-				MPI_Send(gridSendReceive[7], 1, mpi_grid_t, idToSend[7], 0, comm);*/
-	timeSending += MPI_Wtime();
+				}	
 			}
-timeReciving -= MPI_Wtime();
+			
 			MPI_Waitall(8, request, statuss);
-timeReciving += MPI_Wtime();
 
 
 			// Updates the new values of the center of mass
@@ -324,8 +276,6 @@ timeReciving += MPI_Wtime();
 			CENTEROFMASSX(params.yLowerBound, params.xLowerBound) = gridSendReceive[DOWNLEFTPROCESS + 8][0].centerOfMassX;
 			CENTEROFMASSY(params.yLowerBound, params.xLowerBound) = gridSendReceive[DOWNLEFTPROCESS + 8][0].centerOfMassY;
 			MASS(params.yLowerBound, params.xLowerBound) = gridSendReceive[DOWNLEFTPROCESS + 8][0].m;
-
-			timeIter -= MPI_Wtime();
 
 			#pragma omp parallel
 			{
@@ -461,18 +411,13 @@ timeReciving += MPI_Wtime();
 					}
 				}
 			}
-			timeIter += MPI_Wtime();
 
 			
 			// Send the particles to the adjacent processes
 			for(int i = 0; i < 8; ++i) {
-				timeSending -= MPI_Wtime();
-				//printf("\trank %d sent %d particle to %d\n", rank, parSendPos[i], idToSend[i]); fflush(stdout);
 				MPI_Isend(parSend[i], parSendPos[i], mpi_particle_t_reduced, idToSend[i], 2 , comm, &request[i]);
-				timeSending += MPI_Wtime();
 			}
 
-			timeReceivePar -= MPI_Wtime();
 			
 			/*// Barreira de sincronizacao
 			if(MPI_Barrier(comm) != MPI_SUCCESS) {
@@ -506,7 +451,6 @@ timeReciving += MPI_Wtime();
 					// reagrupa as particulas todas, retirando o espaço deixado pelas que sairam
 					long long underEvaluation = params.activeParticles - 1;
 					for (long long i = 0; i < underEvaluation; ++i) {
-						timeRearrange -= MPI_Wtime();
 						if(par[i].active == 0) {
 							while(par[underEvaluation].active == 0 && underEvaluation > i) {
 								underEvaluation--;
@@ -526,7 +470,6 @@ timeReciving += MPI_Wtime();
 								par[underEvaluation].active = 0;
 							}
 						}
-						timeRearrange += MPI_Wtime();
 					}
 					params.activeParticles = underEvaluation;
 
@@ -564,10 +507,7 @@ timeReciving += MPI_Wtime();
 					MPI_Wait(&request[i], MPI_STATUS_IGNORE);
 				}
 			}
-			timeReceivePar += MPI_Wtime();
 		}
-
-		endIter = MPI_Wtime();
 
 		// Liberta espaço para novas alocações
 		freeParReceive(parReceive);
@@ -667,7 +607,7 @@ timeReciving += MPI_Wtime();
 		end = MPI_Wtime();
 	}
 	if(rank == 0) {
-		printf("rank %d - total %.2f seg, Iter %.2f seg, Arrange %.2f seg\n\t\t\ttimeSending %.2f seg, timeReciving %.2f seg\n\t\t\ttimeReceivePar %.2f seg, timeIter %.2f;\n\t\t\ttimeCenterOFMass %.3f timeGenerate %.2f\n", rank, end - start, endIter - startIter, timeRearrange, timeSending, timeReciving, timeReceivePar, timeIter, timeCenterOFMass, timeGenerate);
+		printf("total %.2f seg - timeReciving %.2f seg\n", end - start, timeReciving);
 	}
 	// Free everything
 	MPI_Type_free(&mpi_grid_t);
