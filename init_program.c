@@ -67,6 +67,8 @@ particle_t * init_particles(particle_t *par, int numberOfProcess, int rank) {
     
     srandom(params.seed);
 
+    double vx, vy, m;
+
     params.activeParticles = 0;
     
     for(i = 0; i < params.n_part; i++) {    
@@ -74,17 +76,22 @@ particle_t * init_particles(particle_t *par, int numberOfProcess, int rank) {
 		par[params.activeParticles].positionX = RND0_1;
 		par[params.activeParticles].positionY = RND0_1;
 
-		par[params.activeParticles].vx = RND0_1 / params.ncside / 10.0;
-		par[params.activeParticles].vy = RND0_1 / params.ncside / 10.0;
+		vx = RND0_1;
+		vy = RND0_1;
 
-		par[params.activeParticles].m = RND0_1 * params.ncside / (G * 1e6 * params.n_part);
+		m = RND0_1;
 
-		par[params.activeParticles].gridCoordinateX = par[params.activeParticles].positionX * params.ncside / 1;
-		par[params.activeParticles].gridCoordinateY = par[params.activeParticles].positionY * params.ncside / 1;
+		par[params.activeParticles].gridCoordinateX = (long )(par[params.activeParticles].positionX * params.ncside);
+		par[params.activeParticles].gridCoordinateY = (long )(par[params.activeParticles].positionY * params.ncside);
         
         // Verifica se particula lhe pertence
         if(par[params.activeParticles].gridCoordinateX >= params.xLowerBound && par[params.activeParticles].gridCoordinateX <= params.xUpperBound && 
         	par[params.activeParticles].gridCoordinateY >= params.yLowerBound && par[params.activeParticles].gridCoordinateY <= params.yUpperBound) {
+
+        	par[params.activeParticles].vx = vx / params.ncside / 10.0;
+			par[params.activeParticles].vy = vy / params.ncside / 10.0;
+
+			par[params.activeParticles].m = m * params.ncside / (G * 1e6 * params.n_part);
 			par[params.activeParticles].active = 1;
 
 			par[params.activeParticles].isZero = 0;

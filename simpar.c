@@ -103,6 +103,7 @@ int main(int argc, char *argv[])
 	// Find the division of the grid by the processes
 	numberOfProcess = findGridDivision(numberOfProcess, rank);
 
+	// Verifica se existem mais processos que numero de grid cells
 	int isActive = (rank < numberOfProcess);
 	MPI_Comm_split(MPI_COMM_WORLD, isActive, rank, &comm);
 	
@@ -129,11 +130,6 @@ int main(int argc, char *argv[])
 		
 		// Time Step simulation
 		for(k = params.timeStep; k > 0; k = k - 1) {
-
-			if(rank == 0) {
-				printf("iteration %ld\n", k); fflush(stdout);
-			}
-
 			// Clear the memory position to send and receive particles
 			memset(parSend[0], 0, sizeParSend[0]*sizeof(particle_t_reduced));
 			memset(parSend[1], 0, sizeParSend[1]*sizeof(particle_t_reduced));
@@ -157,6 +153,7 @@ int main(int argc, char *argv[])
 				double *auxMend, *auxCMxEnd, *auxCMyEnd;
 				double auxMval, auxCMxVal, auxCMyVal;
 
+				// Calcula a contribuicao de cada parcicula para o centro de massa
 				#pragma omp for
 				for(long long i = params.activeParticles - 1; i >= 0; i = i - 1) {
 					if(par[i].active != 0) {
@@ -178,7 +175,8 @@ int main(int argc, char *argv[])
 						*auxMend += auxMval;
 					}
 				}
-			
+				
+				// Calcula o centro de massa de cada grid cell
 				#pragma omp for
 				for (int i = params.yUpperBound; i >= params.yLowerBound; i = i - 1) {
 					for (int j = params.xUpperBound; j >= params.xLowerBound; j = j - 1) {
@@ -225,6 +223,7 @@ int main(int argc, char *argv[])
 			gridSendReceive[DOWNLEFTPROCESS][0].centerOfMassY = CENTEROFMASSY(params.yLowerBound, params.xLowerBound);
 			gridSendReceive[DOWNLEFTPROCESS][0].m = MASS(params.yLowerBound, params.xLowerBound);
 
+			// Envia os centros de massa que estao na margem da area de controlo e recebe dos adjacentes
 			#pragma omp parallel 
 			{
 				#pragma omp for
@@ -302,6 +301,7 @@ int main(int argc, char *argv[])
 							m = n % 3 - 1;
 							aux1 = 0, aux2 = 0;
 
+							// Verifica se se encontra na margem da grid, compensa
 							if(par[i].gridCoordinateX+j == -1) {
 								sideLEFTRIGHT = LEFT;
 								aux1 = par[i].gridCoordinateX+j + params.ncside;
@@ -338,9 +338,9 @@ int main(int argc, char *argv[])
 						par[i].positionX = par[i].positionX + par[i].vx + 0.5 * par[i].appliedForceX * invM;//x = x0 + v0t + 0.5 a t^2 (t = 1)
 						par[i].positionY = par[i].positionY + par[i].vy + 0.5 * par[i].appliedForceY * invM;
 
+						// Calcula a posicao real da grelha (sem ajustes de saída)
 						parAuxX = par[i].positionX * params.ncside;
 						parAuxY = par[i].positionY * params.ncside;
-
 
 						//See if its out of bounds
 						if(par[i].positionX >= 1) par[i].positionX = par[i].positionX - (int)(par[i].positionX);
@@ -355,7 +355,8 @@ int main(int argc, char *argv[])
 
 
 						int posicao = 0;
-						// Verificar se particula ficou fora da área de trabalho
+
+						// Verificar se particula ficou fora da área de trabalho - se sim, coloca a no vetor para enviar para adjacentes
 						if(par[i].gridCoordinateX < params.xLowerBound || par[i].gridCoordinateX > params.xUpperBound || 
 							par[i].gridCoordinateY < params.yLowerBound || par[i].gridCoordinateY > params.yUpperBound) {
 							if(parAuxX < params.xLowerBound) {
@@ -386,7 +387,7 @@ int main(int argc, char *argv[])
 								posicao = parSendPos[destiny];
 								parSendPos[destiny] = parSendPos[destiny] + 1;
 								
-								// Caso esgote o espaço, incrementa o tamanho desse vetor
+								// Caso esgote o espaço, incrementa o tamanho do vetor de transmissao de particulas
 								if(parSendPos[destiny] >= sizeParSend[destiny]) {
 									sizeParSend[destiny] = sizeParSend[destiny] + incSizeParSend;
 									if((parSend[destiny] = (particle_t_reduced *)realloc(parSend[destiny], sizeParSend[destiny]*sizeof(particle_t_reduced))) == NULL) {
@@ -435,12 +436,14 @@ int main(int argc, char *argv[])
 					while(count > sizeParReceive) {
 						sizeParReceive = sizeParReceive + incSizeParReceive;
 					}
+					// Realoca o vetor para caber todas as particulas
 					if((parReceive = (particle_t_reduced *)realloc(parReceive, sizeParReceive*sizeof(particle_t_reduced))) == NULL) {
 						printf("ERROR realloc\n");fflush(stdout);
 						exit(0);
 					}
 				}
 
+				// Recebe as particulas dos processos adjacentes, mesmo quando um processo nao tem particulas para enviar, envia uma omp message a indicar 0
 				MPI_Recv(parReceive, sizeParReceive, mpi_particle_t_reduced, idToSend[i], 2, comm, &status);
 
 				// Verifica se tem espaço para guardar as novas particulas
@@ -525,7 +528,7 @@ int main(int argc, char *argv[])
 
 			#pragma omp parallel
 			{
-				// Calcula o centro de massa com as particulas do processo 0
+				// Calcula o centro de massa com as particulas do processo 
 				#pragma omp for reduction(+:final_sendcenterOfMassX, final_sendcenterOfMassY, final_sendm)
 				for(long long i = params.activeParticles - 1; i >= 0; i = i - 1) {	
 					if(par[i].active != 0) {
@@ -538,6 +541,7 @@ int main(int argc, char *argv[])
 					}
 				}
 			}
+			// Liberto as suas particulas
 			freeParticles(par);
 
 			grid_tt final_send;
@@ -545,7 +549,7 @@ int main(int argc, char *argv[])
 			final_send.centerOfMassY = final_sendcenterOfMassY;
 			final_send.m = final_sendm;
 
-			// Envia particulas para o processo 0
+			// Envia o centro de massa parcial para o processo 0
 			MPI_Send(&final_send, 1, mpi_grid_t, 0, 3, comm);
 		}
 		else {
@@ -577,10 +581,10 @@ int main(int argc, char *argv[])
 			centerOfMassY = final_sendcenterOfMassY;
 			totalMass = final_sendm;
 
-			// Liberto as particulas para ter espaço para alocar mais
+			// Liberto as particulas
 			freeParticles(par);
 
-			// Receve particulas dos demais processos
+			// Receve a informacao dos centros de massa dos demais processos e calcula o centro de massa total
 			for (int i = 1; i < numberOfProcess; ++i) {
 				MPI_Recv(&final_send, 1, mpi_grid_t, i, 3, comm, &status);
 				centerOfMassX = centerOfMassX + final_send.centerOfMassX;
@@ -595,7 +599,7 @@ int main(int argc, char *argv[])
 		}
 
 
-		// Barreira de sincronizacao
+		// Barreira de sincronizacao para ter a certeza que todos os processos terminam
 		if(MPI_Barrier(comm) != MPI_SUCCESS) {
 			printf(" Error on barrier on iteration %ld\n", k); fflush(stdout);
 		}
@@ -613,4 +617,3 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
-
